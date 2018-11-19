@@ -1,15 +1,13 @@
 package no.ks.fiks.maskinporten;
 
-import com.nimbusds.jose.JOSEException;
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.JWSSigner;
+import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jose.util.Base64;
 import com.nimbusds.jose.util.JSONObjectUtils;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
 import net.jodah.expiringmap.ExpirationPolicy;
 import net.jodah.expiringmap.ExpiringEntryLoader;
 import net.jodah.expiringmap.ExpiringMap;
@@ -31,6 +29,7 @@ import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.MINUTES;
 
+@Slf4j
 public class Maskinportenklient {
     private static final String GRANT_TYPE = "urn:ietf:params:oauth:grant-type:jwt-bearer";
     private final MaskinportenklientProperties properties;
@@ -50,7 +49,11 @@ public class Maskinportenklient {
                 .variableExpiration()
                 .expiringEntryLoader((ExpiringEntryLoader<Set<String>, String>) scopes -> {
                     final JSONObject json = parse(doAquireAccessToken(scopes));
-                    final int duration = Integer.parseInt(json.getAsString("expires_in")) - properties.getNumberOfSecondsLeftBeforeExpire();
+                    final JSONObject accessToken = parseAccessToken(json);
+                    final long expiresIn = (long) json.getAsNumber("expires_in");
+                    final long duration = expiresIn - properties.getNumberOfSecondsLeftBeforeExpire();
+                    long exp = TimeUnit.MILLISECONDS.convert((long) accessToken.getAsNumber("exp"), TimeUnit.SECONDS);
+                    log.info("Adding access token to cache; access_token.scopes: '{}', access_token.exp: {}, expires_in: {} seconds. Expires from cache in {} seconds ({}).", json.getAsString("scope"), new Date(exp), expiresIn, duration, new Date(System.currentTimeMillis() + (1000 * duration)));
                     return new ExpiringValue<>(json.getAsString("access_token"), ExpirationPolicy.CREATED, duration, TimeUnit.SECONDS);
                 })
                 .build();
@@ -65,14 +68,15 @@ public class Maskinportenklient {
     }
 
     protected String createJwtRequestForAccessToken(String... scopes) throws JOSEException {
-        final long issuedTime = System.currentTimeMillis();
+        final long issuedTimeInMillis = System.currentTimeMillis();
+        final long expirationTimeInMillis = issuedTimeInMillis + MILLISECONDS.convert(2, MINUTES);
         final SignedJWT signedJWT = new SignedJWT(jwsHeader, new JWTClaimsSet.Builder()
                 .audience(properties.getAudience())
                 .issuer(properties.getIssuer())
                 .claim("scope", String.join(" ", scopes))
                 .jwtID(UUID.randomUUID().toString())
-                .issueTime(new Date(issuedTime))
-                .expirationTime(new Date(issuedTime + MINUTES.convert(2, MILLISECONDS)))
+                .issueTime(new Date(issuedTimeInMillis))
+                .expirationTime(new Date(expirationTimeInMillis))
                 .build());
         signedJWT.sign(signer);
         return signedJWT.serialize();
@@ -128,6 +132,16 @@ public class Maskinportenklient {
     private JSONObject parse(String value) {
         try {
             return JSONObjectUtils.parse(value);
+        } catch (ParseException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private JSONObject parseAccessToken(JSONObject json) {
+        try {
+            return JWSObject.parse(json.getAsString("access_token"))
+                    .getPayload()
+                    .toJSONObject();
         } catch (ParseException e) {
             throw new RuntimeException(e);
         }
