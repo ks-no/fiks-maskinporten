@@ -72,7 +72,7 @@ public class Maskinportenklient {
                 .claim("scope", String.join(" ", scopes))
                 .jwtID(UUID.randomUUID().toString())
                 .issueTime(new Date(issuedTime))
-                .expirationTime(new Date(issuedTime + MINUTES.convert(2, MILLISECONDS)))
+                .expirationTime(new Date(issuedTime + MILLISECONDS.convert(2, MINUTES)))
                 .build());
         signedJWT.sign(signer);
         return signedJWT.serialize();
