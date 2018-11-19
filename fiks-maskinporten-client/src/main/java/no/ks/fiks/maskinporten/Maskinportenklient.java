@@ -17,10 +17,7 @@ import net.jodah.expiringmap.ExpiringValue;
 import net.minidev.json.JSONObject;
 
 import javax.net.ssl.HttpsURLConnection;
-import java.io.BufferedReader;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
@@ -111,7 +108,18 @@ public class Maskinportenklient {
             dos.write(postData);
         }
 
-        try (InputStreamReader isr = new InputStreamReader(con.getInputStream());
+        if (con.getResponseCode() == 200) {
+            return toString(con.getInputStream());
+        }
+
+        throw new RuntimeException(String.format("Http response code: %s, url: '%s', scopes: '%s', message: '%s'", con.getResponseCode(), properties.getTokenEndpoint(), scopes, toString(con.getErrorStream())));
+    }
+
+    private String toString(InputStream inputStream) throws IOException {
+        if (inputStream == null) {
+            return null;
+        }
+        try (InputStreamReader isr = new InputStreamReader(inputStream);
              BufferedReader br = new BufferedReader(isr)) {
             return br.lines().collect(Collectors.joining("\n"));
         }
