@@ -14,8 +14,8 @@ import net.jodah.expiringmap.ExpiringMap;
 import net.jodah.expiringmap.ExpiringValue;
 import net.minidev.json.JSONObject;
 
-import javax.net.ssl.HttpsURLConnection;
 import java.io.*;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
@@ -98,7 +98,7 @@ public class Maskinportenklient {
         final int postDataLength = postData.length;
 
         final URL tokenEndpoint = new URL(properties.getTokenEndpoint());
-        final HttpsURLConnection con = (HttpsURLConnection) tokenEndpoint.openConnection();
+        final HttpURLConnection con = (HttpURLConnection) tokenEndpoint.openConnection();
 
         con.setDoOutput(true);
         con.setInstanceFollowRedirects(false);
