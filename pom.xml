@@ -30,7 +30,7 @@
     <oauth2-oidc-sdk.version>6.1.1</oauth2-oidc-sdk.version>
     <changelist>-SNAPSHOT</changelist>
     <maven.compiler.target>1.8</maven.compiler.target>
-    <revision>1.0.4</revision>
+    <revision>1.0.5</revision>
     <maven-deploy-plugin.version>2.8.2</maven-deploy-plugin.version>
     <maven.compiler.source>1.8</maven.compiler.source>
   </properties>
