@@ -20,6 +20,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.security.cert.CertificateEncodingException;
+import java.security.cert.X509Certificate;
 import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -37,13 +38,16 @@ public class Maskinportenklient {
     private final JWSSigner signer;
     private final ExpiringMap<Set<String>, String> map;
 
-
     public Maskinportenklient(@NonNull KeyStore keyStore, @NonNull MaskinportenklientProperties properties) throws KeyStoreException, CertificateEncodingException, UnrecoverableKeyException, NoSuchAlgorithmException {
+        this((PrivateKey) keyStore.getKey(properties.getPrivateKeyAlias(), properties.getPrivateKeyPassword()), (X509Certificate) keyStore.getCertificate(properties.getPrivateKeyAlias()), properties);
+    }
+
+    public Maskinportenklient(@NonNull PrivateKey privateKey, X509Certificate certificate, @NonNull MaskinportenklientProperties properties) throws CertificateEncodingException {
         this.properties = properties;
         jwsHeader = new JWSHeader.Builder(JWSAlgorithm.RS256)
-                .x509CertChain(singletonList(Base64.encode(keyStore.getCertificate(properties.getPrivateKeyAlias()).getEncoded())))
+                .x509CertChain(singletonList(Base64.encode(certificate.getEncoded())))
                 .build();
-        signer = new RSASSASigner((PrivateKey) keyStore.getKey(properties.getPrivateKeyAlias(), properties.getPrivateKeyPassword()));
+        signer = new RSASSASigner(privateKey);
 
         map = ExpiringMap.builder()
                 .variableExpiration()
@@ -59,7 +63,7 @@ public class Maskinportenklient {
                 .build();
     }
 
-    public String getAccessToken(Collection<String> scopes) {
+    public String getAccessToken(@NonNull Collection<String> scopes) {
         return map.get(new HashSet<>(scopes));
     }
 
