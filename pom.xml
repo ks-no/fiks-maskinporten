@@ -8,15 +8,15 @@
     <version>0.0.3</version>
   </parent>
   <groupId>no.ks.fiks</groupId>
-  <artifactId>fiks-maskinporten</artifactId>
+  <artifactId>maskinporten</artifactId>
   <version>${revision}${changelist}</version>
   <packaging>pom</packaging>
   <name>${project.artifactId}</name>
   <description>${project.artifactId}</description>
   <url>https://github.com/ks-no/fiks-maskinporten</url>
   <modules>
-    <module>fiks-maskinporten-client</module>
-    <module>fiks-maskinporten-spring-boot-client</module>
+    <module>maskinporten-client</module>
+    <module>maskinporten-spring-boot-client</module>
   </modules>
   <scm>
     <connection>scm:git:git@github.com:ks-no/fiks-maskinporten.git</connection>
@@ -25,7 +25,7 @@
   </scm>
   <properties>
     <lombok.version>1.18.4</lombok.version>
-    <virksomhetssertifikat.version>1.0.9</virksomhetssertifikat.version>
+    <virksomhetssertifikat.version>1.0.10-SNAPSHOT</virksomhetssertifikat.version>
     <expiringmap.version>0.5.8</expiringmap.version>
     <oauth2-oidc-sdk.version>6.1.1</oauth2-oidc-sdk.version>
     <changelist>-SNAPSHOT</changelist>
@@ -68,12 +68,12 @@
       </dependency>
       <dependency>
         <groupId>no.ks.fiks</groupId>
-        <artifactId>fiks-maskinporten-client</artifactId>
+        <artifactId>maskinporten-client</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
         <groupId>no.ks.fiks</groupId>
-        <artifactId>fiks-virksomhetssertifikat</artifactId>
+        <artifactId>virksomhetssertifikat</artifactId>
         <version>${virksomhetssertifikat.version}</version>
       </dependency>
     </dependencies>
