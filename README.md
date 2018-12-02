@@ -1,4 +1,4 @@
-# fiks-maskinporten-client
+# maskinporten-client
 Dette er en klient som kobler seg opp til Maskinporten (https://difi.github.io/idporten-oidc-dokumentasjon/oidc_auth_server-to-server-oauth2.html) og ber om en JWT-access-token basert på et virksomhetssertifikat, en issuer (konto hos Difi) og ett eller flere scopes.
 
 Husk å be Difi konfigurere opp klienten til å sende JWT-access-token og ikke "token by reference".
@@ -11,7 +11,7 @@ Konfigurasjon gjøres ved initiering av klienten og styres i feltet "numberOfSec
 ```xml
         <dependency>
             <groupId>no.ks.fiks</groupId>
-            <artifactId>fiks-maskinporten-client</artifactId>
+            <artifactId>maskinporten-client</artifactId>
             <version>1.0.5</version>
         </dependency>
 ```
@@ -56,14 +56,14 @@ public class Application {
 
 }
 ```
-# fiks-maskinporten-spring-boot-client
+# maskinporten-spring-boot-client
 Autokonfigurasjon av maskinporten for Spring Boot.
 
 ## Maven koordinater
 ```xml
         <dependency>
             <groupId>no.ks.fiks</groupId>
-            <artifactId>fiks-maskinporten-spring-boot-client</artifactId>
+            <artifactId>maskinporten-spring-boot-client</artifactId>
             <version>1.0.5</version>
         </dependency>
 ```
