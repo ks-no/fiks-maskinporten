@@ -12,7 +12,7 @@ Konfigurasjon gjøres ved initiering av klienten og styres i feltet "numberOfSec
         <dependency>
             <groupId>no.ks.fiks</groupId>
             <artifactId>fiks-maskinporten-client</artifactId>
-            <version>1.0.3</version>
+            <version>1.0.5</version>
         </dependency>
 ```
 
@@ -64,7 +64,7 @@ Autokonfigurasjon av maskinporten for Spring Boot.
         <dependency>
             <groupId>no.ks.fiks</groupId>
             <artifactId>fiks-maskinporten-spring-boot-client</artifactId>
-            <version>1.0.3</version>
+            <version>1.0.5</version>
         </dependency>
 ```
 ## Eksempel
