@@ -18,9 +18,7 @@ public class MaskinportenAutoConfigure {
     public Maskinportenklient getMaskinportenklient(MaskinportenProperties properties, VirksomhetSertifikater virksomhetSertifikater) throws UnrecoverableKeyException, CertificateEncodingException, NoSuchAlgorithmException, KeyStoreException {
         VirksomhetSertifikater.KsVirksomhetSertifikatStore authKeyStore = virksomhetSertifikater.requireAuthKeyStore();
 
-        return new Maskinportenklient(authKeyStore.getKeyStore(), MaskinportenklientProperties.builder()
-                .privateKeyPassword(authKeyStore.getPrivateKeyPassword())
-                .privateKeyAlias(authKeyStore.getPrivateKeyAlias())
+        return new Maskinportenklient(authKeyStore.getKeyStore(), authKeyStore.getPrivateKeyAlias(), authKeyStore.getPrivateKeyPassword(), MaskinportenklientProperties.builder()
                 .numberOfSecondsLeftBeforeExpire(properties.getNumberOfSecondsLeftBeforeExpire())
                 .issuer(properties.getIssuer())
                 .audience(properties.getAudience())

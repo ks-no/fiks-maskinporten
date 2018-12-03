@@ -38,8 +38,8 @@ public class Maskinportenklient {
     private final JWSSigner signer;
     private final ExpiringMap<Set<String>, String> map;
 
-    public Maskinportenklient(@NonNull KeyStore keyStore, @NonNull MaskinportenklientProperties properties) throws KeyStoreException, CertificateEncodingException, UnrecoverableKeyException, NoSuchAlgorithmException {
-        this((PrivateKey) keyStore.getKey(properties.getPrivateKeyAlias(), properties.getPrivateKeyPassword()), (X509Certificate) keyStore.getCertificate(properties.getPrivateKeyAlias()), properties);
+    public Maskinportenklient(@NonNull KeyStore keyStore, String privateKeyAlias,  char[] privateKeyPassword, @NonNull MaskinportenklientProperties properties) throws KeyStoreException, CertificateEncodingException, UnrecoverableKeyException, NoSuchAlgorithmException {
+        this((PrivateKey) keyStore.getKey(privateKeyAlias, privateKeyPassword), (X509Certificate) keyStore.getCertificate(privateKeyAlias), properties);
     }
 
     public Maskinportenklient(@NonNull PrivateKey privateKey, X509Certificate certificate, @NonNull MaskinportenklientProperties properties) throws CertificateEncodingException {

@@ -7,8 +7,6 @@ import lombok.Data;
 @Builder
 public class MaskinportenklientProperties {
     public String audience;
-    private String privateKeyAlias;
-    private char[] privateKeyPassword;
     private String tokenEndpoint;
     private String issuer;
     private int numberOfSecondsLeftBeforeExpire;
