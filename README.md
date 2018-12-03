@@ -35,9 +35,7 @@ public class Application {
         char[] keyStorePassword = "passord".toCharArray();
         KeyStore keyStore = getKeyStore(keyStoreFilename, keyStorePassword);
 
-        Maskinportenklient maskinporten = new Maskinportenklient(keyStore, MaskinportenklientProperties.builder()
-                .privateKeyPassword(keyStorePassword)
-                .privateKeyAlias("authentication certificate")
+        Maskinportenklient maskinporten = new Maskinportenklient(keyStore, "authentication certificate", keyStorePassword, MaskinportenklientProperties.builder()
                 .numberOfSecondsLeftBeforeExpire(10)
                 .issuer("<klient-id-utdelt-av-difi>")
                 .audience("https://oidc-ver2.difi.no/idporten-oidc-provider/")
