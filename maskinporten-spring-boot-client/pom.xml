@@ -25,6 +25,10 @@
             <groupId>no.ks.fiks</groupId>
             <artifactId>virksomhetssertifikat</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.hibernate</groupId>
+            <artifactId>hibernate-validator</artifactId>
+        </dependency>
     </dependencies>
 
 </project>
