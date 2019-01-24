@@ -52,7 +52,7 @@ public class Maskinportenklient {
         map = ExpiringMap.builder()
                 .variableExpiration()
                 .expiringEntryLoader((ExpiringEntryLoader<Set<String>, String>) scopes -> {
-                    final JSONObject json = parse(doAquireAccessToken(scopes));
+                    final JSONObject json = parse(doAcquireAccessToken(scopes));
                     final JSONObject accessToken = parseAccessToken(json);
                     final long expiresIn = (long) json.getAsNumber("expires_in");
                     final long duration = expiresIn - properties.getNumberOfSecondsLeftBeforeExpire();
@@ -86,22 +86,25 @@ public class Maskinportenklient {
         return signedJWT.serialize();
     }
 
-    private String doAquireAccessToken(Set<String> scopes) {
+    private String doAcquireAccessToken(Set<String> scopes) {
         try {
-            return aquireAccessToken(scopes);
+            return acquireAccessToken(scopes);
         } catch (JOSEException | IOException e) {
+            log.error("Could not acquire access token due to an exception", e);
             throw new RuntimeException(e);
         }
     }
 
-    private String aquireAccessToken(Set<String> scopes) throws JOSEException, IOException {
+    private String acquireAccessToken(Set<String> scopes) throws JOSEException, IOException {
         final byte[] postData = "grant_type={grant_type}&assertion={assertion}"
                 .replace("{grant_type}", GRANT_TYPE)
                 .replace("{assertion}", createJwtRequestForAccessToken(scopes.toArray(new String[]{})))
                 .getBytes(StandardCharsets.UTF_8);
         final int postDataLength = postData.length;
 
-        final URL tokenEndpoint = new URL(properties.getTokenEndpoint());
+        final String tokenEndpointUrlString = properties.getTokenEndpoint();
+        log.debug("Acquires access token from \"{}\"", tokenEndpointUrlString);
+        final URL tokenEndpoint = new URL(tokenEndpointUrlString);
         final HttpURLConnection con = (HttpURLConnection) tokenEndpoint.openConnection();
 
         con.setDoOutput(true);
@@ -120,13 +123,15 @@ public class Maskinportenklient {
             return toString(con.getInputStream());
         }
 
-        throw new RuntimeException(String.format("Http response code: %s, url: '%s', scopes: '%s', message: '%s'", con.getResponseCode(), properties.getTokenEndpoint(), scopes, toString(con.getErrorStream())));
+        throw new RuntimeException(String.format("Http response code: %s, url: '%s', scopes: '%s', message: '%s'", con.getResponseCode(),
+                                                 tokenEndpointUrlString, scopes, toString(con.getErrorStream())));
     }
 
     private String toString(InputStream inputStream) throws IOException {
         if (inputStream == null) {
             return null;
         }
+
         try (InputStreamReader isr = new InputStreamReader(inputStream);
              BufferedReader br = new BufferedReader(isr)) {
             return br.lines().collect(Collectors.joining("\n"));
