@@ -74,10 +74,15 @@ public class Maskinportenklient {
     protected String createJwtRequestForAccessToken(String... scopes) throws JOSEException {
         final long issuedTimeInMillis = System.currentTimeMillis();
         final long expirationTimeInMillis = issuedTimeInMillis + MILLISECONDS.convert(2, MINUTES);
+
+        final String audience = properties.getAudience();
+        final String issuer = properties.getIssuer();
+        final String claimScopes = String.join(" ", scopes);
+        log.debug("Signing JWTRequest with audience='{}',issuer='{}',scopes='{}'", audience, issuer, claimScopes);
         final SignedJWT signedJWT = new SignedJWT(jwsHeader, new JWTClaimsSet.Builder()
-                .audience(properties.getAudience())
-                .issuer(properties.getIssuer())
-                .claim("scope", String.join(" ", scopes))
+                .audience(audience)
+                .issuer(issuer)
+                .claim("scope", claimScopes)
                 .jwtID(UUID.randomUUID().toString())
                 .issueTime(new Date(issuedTimeInMillis))
                 .expirationTime(new Date(expirationTimeInMillis))
