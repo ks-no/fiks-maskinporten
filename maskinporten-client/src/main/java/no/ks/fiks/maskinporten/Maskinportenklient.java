@@ -64,6 +64,9 @@ public class Maskinportenklient {
     }
 
     public String getAccessToken(@NonNull Collection<String> scopes) {
+        if(scopes.isEmpty()) {
+            throw new IllegalArgumentException("Minst ett scope må oppgies");
+        }
         return map.get(new HashSet<>(scopes));
     }
 
