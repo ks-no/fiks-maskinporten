@@ -26,19 +26,19 @@
   <properties>
     <lombok.version>1.18.4</lombok.version>
     <virksomhetssertifikat.version>1.0.10</virksomhetssertifikat.version>
+    <slf4j.version>1.7.26</slf4j.version>
     <expiringmap.version>0.5.9</expiringmap.version>
+    <lang-tag.version>1.4.4</lang-tag.version>
+    <nimbus-jose-jwt.version>7.0.1</nimbus-jose-jwt.version>
     <oauth2-oidc-sdk.version>6.5</oauth2-oidc-sdk.version>
     <changelist>-SNAPSHOT</changelist>
     <maven.compiler.target>1.8</maven.compiler.target>
-    <revision>1.0.11</revision>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <revision>1.0.12</revision>
+    <json-smart.version>2.3</json-smart.version>
+    <hibernate-validator.version>6.0.16.Final</hibernate-validator.version>
     <maven-deploy-plugin.version>2.8.2</maven-deploy-plugin.version>
     <maven.compiler.source>1.8</maven.compiler.source>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <lang-tag.version>1.4.4</lang-tag.version>
-    <json-smart.version>2.3</json-smart.version>
-    <nimbus-jose-jwt.version>7.0.1</nimbus-jose-jwt.version>
-    <slf4j.version>1.7.26</slf4j.version>
-    <hibernate-validator.version>6.0.16.Final</hibernate-validator.version>
   </properties>
   <dependencyManagement>
     <dependencies>
