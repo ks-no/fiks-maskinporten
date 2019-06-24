@@ -13,5 +13,5 @@ public class MaskinportenProperties {
     @NotNull private String audience;
     @NotNull private String tokenEndpoint;
     @NotNull private String issuer;
-    private int numberOfSecondsLeftBeforeExpire;
+    private int numberOfSecondsLeftBeforeExpire = 10;
 }
