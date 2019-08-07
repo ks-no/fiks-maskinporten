@@ -26,7 +26,7 @@
   <properties>
     <lombok.version>1.18.8</lombok.version>
     <virksomhetssertifikat.version>1.0.10</virksomhetssertifikat.version>
-    <slf4j.version>1.7.26</slf4j.version>
+    <slf4j.version>1.7.27</slf4j.version>
     <expiringmap.version>0.5.9</expiringmap.version>
     <lang-tag.version>1.4.4</lang-tag.version>
     <nimbus-jose-jwt.version>7.3</nimbus-jose-jwt.version>
