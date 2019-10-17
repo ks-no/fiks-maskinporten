@@ -24,13 +24,13 @@
     <url>https://github.com/ks-no/fiks-maskinporten</url>
   </scm>
   <properties>
-    <lombok.version>1.18.8</lombok.version>
-    <virksomhetssertifikat.version>1.0.10</virksomhetssertifikat.version>
-    <slf4j.version>1.7.26</slf4j.version>
+    <lombok.version>1.18.10</lombok.version>
+    <virksomhetssertifikat.version>1.0.11</virksomhetssertifikat.version>
+    <slf4j.version>1.7.28</slf4j.version>
     <expiringmap.version>0.5.9</expiringmap.version>
     <lang-tag.version>1.4.4</lang-tag.version>
-    <nimbus-jose-jwt.version>7.3</nimbus-jose-jwt.version>
-    <oauth2-oidc-sdk.version>6.5</oauth2-oidc-sdk.version>
+    <nimbus-jose-jwt.version>8.1</nimbus-jose-jwt.version>
+    <oauth2-oidc-sdk.version>6.16.2</oauth2-oidc-sdk.version>
     <changelist>-SNAPSHOT</changelist>
     <maven.compiler.target>1.8</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
