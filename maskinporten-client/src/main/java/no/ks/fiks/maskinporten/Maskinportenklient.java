@@ -111,7 +111,8 @@ public class Maskinportenklient {
         final int postDataLength = postData.length;
 
         final String tokenEndpointUrlString = properties.getTokenEndpoint();
-        log.debug("Acquires access token from \"{}\"", tokenEndpointUrlString);
+        log.debug("Acquiring access token from \"{}\"", tokenEndpointUrlString);
+        long startTime = System.currentTimeMillis();
         final URL tokenEndpoint = new URL(tokenEndpointUrlString);
         final HttpURLConnection con = (HttpURLConnection) tokenEndpoint.openConnection();
 
@@ -127,7 +128,9 @@ public class Maskinportenklient {
             dos.write(postData);
         }
 
-        if (con.getResponseCode() == 200) {
+        int responseCode = con.getResponseCode();
+        log.debug("Access token response received in {} ms with status {}", System.currentTimeMillis() - startTime, responseCode);
+        if (responseCode == 200) {
             return toString(con.getInputStream());
         }
 
