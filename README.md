@@ -12,7 +12,7 @@ Konfigurasjon gjøres ved initiering av klienten og styres i feltet "numberOfSec
         <dependency>
             <groupId>no.ks.fiks</groupId>
             <artifactId>maskinporten-client</artifactId>
-            <version>1.0.5</version>
+            <version>1.0.13</version>
         </dependency>
 ```
 
