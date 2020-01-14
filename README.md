@@ -1,5 +1,5 @@
 # maskinporten-client
-[![Maven Central](https://img.shields.io/maven-central/v/no.ks.fiks/maskinporten)](https://search.maven.org/artifact/no.ks.fiks/maskinporten-client)
+[![Maven Central](https://img.shields.io/maven-central/v/no.ks.fiks/maskinporten-client)](https://search.maven.org/artifact/no.ks.fiks/maskinporten-client)
 ![GitHub](https://img.shields.io/github/license/ks-no/fiks-maskinporten)
 
 Dette er en klient som kobler seg opp til Maskinporten (https://difi.github.io/idporten-oidc-dokumentasjon/oidc_auth_server-to-server-oauth2.html) og ber om en JWT-access-token basert på et virksomhetssertifikat, en issuer (konto hos Difi) og ett eller flere scopes.
