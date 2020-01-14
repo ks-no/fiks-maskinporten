@@ -115,7 +115,8 @@ public class Maskinportenklient {
         long startTime = System.currentTimeMillis();
         final URL tokenEndpoint = new URL(tokenEndpointUrlString);
         final HttpURLConnection con = (HttpURLConnection) tokenEndpoint.openConnection();
-
+        con.setConnectTimeout(properties.getTimeoutMillis());
+        con.setReadTimeout(properties.getTimeoutMillis());
         con.setDoOutput(true);
         con.setInstanceFollowRedirects(false);
         con.setRequestMethod("POST");

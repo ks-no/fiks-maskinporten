@@ -3,6 +3,8 @@ package no.ks.fiks.maskinporten;
 import lombok.Builder;
 import lombok.Data;
 
+import java.util.concurrent.TimeUnit;
+
 @Data
 @Builder
 public class MaskinportenklientProperties {
@@ -10,4 +12,6 @@ public class MaskinportenklientProperties {
     private String tokenEndpoint;
     private String issuer;
     private int numberOfSecondsLeftBeforeExpire;
+    @Builder.Default
+    private int timeoutMillis = (int) TimeUnit.MINUTES.toMillis(1L);
 }
