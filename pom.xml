@@ -24,7 +24,7 @@
     <url>https://github.com/ks-no/fiks-maskinporten</url>
   </scm>
   <properties>
-    <lombok.version>1.18.10</lombok.version>
+    <lombok.version>1.18.12</lombok.version>
     <virksomhetssertifikat.version>1.0.11</virksomhetssertifikat.version>
     <expiringmap.version>0.5.9</expiringmap.version>
     <slf4j.version>1.7.30</slf4j.version>
