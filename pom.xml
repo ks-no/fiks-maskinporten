@@ -29,7 +29,7 @@
     <expiringmap.version>0.5.9</expiringmap.version>
     <slf4j.version>1.7.30</slf4j.version>
     <lang-tag.version>1.4.4</lang-tag.version>
-    <nimbus-jose-jwt.version>8.4</nimbus-jose-jwt.version>
+    <nimbus-jose-jwt.version>8.19</nimbus-jose-jwt.version>
     <oauth2-oidc-sdk.version>6.23</oauth2-oidc-sdk.version>
     <changelist>-SNAPSHOT</changelist>
     <maven.compiler.target>1.8</maven.compiler.target>
