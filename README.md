@@ -45,7 +45,7 @@ public class Application {
                 .tokenEndpoint("https://oidc-ver2.difi.no/idporten-oidc-provider/token")
                 .build());
 
-        String accessToken = maskinporten.getAccessToken("ks");
+        String accessToken = maskinporten.getAccessToken("ks:fiks");
         System.out.println("accessToken = " + accessToken);
     }
 
