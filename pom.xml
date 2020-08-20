@@ -24,21 +24,21 @@
     <url>https://github.com/ks-no/fiks-maskinporten</url>
   </scm>
   <properties>
-    <lombok.version>1.18.12</lombok.version>
+    <nimbus-jose-jwt.version>8.4</nimbus-jose-jwt.version>
     <virksomhetssertifikat.version>1.0.11</virksomhetssertifikat.version>
+    <maven.compiler.source>1.8</maven.compiler.source>
     <expiringmap.version>0.5.9</expiringmap.version>
+    <json-smart.version>2.3</json-smart.version>
+    <revision>1.0.17</revision>
+    <lombok.version>1.18.12</lombok.version>
+    <maven.compiler.target>1.8</maven.compiler.target>
     <slf4j.version>1.7.30</slf4j.version>
     <lang-tag.version>1.5</lang-tag.version>
-    <nimbus-jose-jwt.version>8.4</nimbus-jose-jwt.version>
     <oauth2-oidc-sdk.version>6.23</oauth2-oidc-sdk.version>
     <changelist>-SNAPSHOT</changelist>
-    <maven.compiler.target>1.8</maven.compiler.target>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <revision>1.0.16</revision>
-    <json-smart.version>2.3</json-smart.version>
-    <maven-deploy-plugin.version>2.8.2</maven-deploy-plugin.version>
     <hibernate-validator.version>6.1.5.Final</hibernate-validator.version>
-    <maven.compiler.source>1.8</maven.compiler.source>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven-deploy-plugin.version>2.8.2</maven-deploy-plugin.version>
   </properties>
   <dependencyManagement>
     <dependencies>
