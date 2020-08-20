@@ -23,6 +23,7 @@ public class MaskinportenAutoConfigure {
                 .issuer(properties.getIssuer())
                 .audience(properties.getAudience())
                 .tokenEndpoint(properties.getTokenEndpoint())
+                .consumerOrg(properties.getConsumerOrg())
                 .build());
     }
 }

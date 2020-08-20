@@ -33,6 +33,8 @@ import static java.util.concurrent.TimeUnit.MINUTES;
 @Slf4j
 public class Maskinportenklient {
     private static final String GRANT_TYPE = "urn:ietf:params:oauth:grant-type:jwt-bearer";
+    static final String CLAIM_SCOPE = "scope";
+    static final String CLAIM_CONSUMER_ORG = "consumer_org";
     private final MaskinportenklientProperties properties;
     private final JWSHeader jwsHeader;
     private final JWSSigner signer;
@@ -57,7 +59,7 @@ public class Maskinportenklient {
                     final long expiresIn = (long) json.getAsNumber("expires_in");
                     final long duration = expiresIn - properties.getNumberOfSecondsLeftBeforeExpire();
                     long exp = TimeUnit.MILLISECONDS.convert((long) accessToken.getAsNumber("exp"), TimeUnit.SECONDS);
-                    log.info("Adding access token to cache; access_token.scopes: '{}', access_token.exp: {}, expires_in: {} seconds. Expires from cache in {} seconds ({}).", json.getAsString("scope"), new Date(exp), expiresIn, duration, new Date(System.currentTimeMillis() + (1000 * duration)));
+                    log.info("Adding access token to cache; access_token.scopes: '{}', access_token.exp: {}, expires_in: {} seconds. Expires from cache in {} seconds ({}).", json.getAsString(CLAIM_SCOPE), new Date(exp), expiresIn, duration, new Date(System.currentTimeMillis() + (1000 * duration)));
                     return new ExpiringValue<>(json.getAsString("access_token"), ExpirationPolicy.CREATED, duration, TimeUnit.SECONDS);
                 })
                 .build();
@@ -81,14 +83,19 @@ public class Maskinportenklient {
         final String audience = properties.getAudience();
         final String issuer = properties.getIssuer();
         final String claimScopes = String.join(" ", scopes);
-        log.debug("Signing JWTRequest with audience='{}',issuer='{}',scopes='{}'", audience, issuer, claimScopes);
-        final SignedJWT signedJWT = new SignedJWT(jwsHeader, new JWTClaimsSet.Builder()
+        final String consumerOrg = properties.getConsumerOrg();
+        log.debug("Signing JWTRequest with audience='{}',issuer='{}',scopes='{}',consumerOrg='{}'", audience, issuer, claimScopes, consumerOrg);
+        final JWTClaimsSet.Builder claimBuilder = new JWTClaimsSet.Builder()
                 .audience(audience)
                 .issuer(issuer)
-                .claim("scope", claimScopes)
+                .claim(CLAIM_SCOPE, claimScopes)
                 .jwtID(UUID.randomUUID().toString())
                 .issueTime(new Date(issuedTimeInMillis))
-                .expirationTime(new Date(expirationTimeInMillis))
+                .expirationTime(new Date(expirationTimeInMillis));
+        if(consumerOrg != null) {
+            claimBuilder.claim(CLAIM_CONSUMER_ORG, consumerOrg);
+        }
+        final SignedJWT signedJWT = new SignedJWT(jwsHeader, claimBuilder
                 .build());
         signedJWT.sign(signer);
         return signedJWT.serialize();
