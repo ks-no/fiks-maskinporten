@@ -12,6 +12,7 @@ public class MaskinportenklientProperties {
     private String tokenEndpoint;
     private String issuer;
     private int numberOfSecondsLeftBeforeExpire;
+    private String consumerOrg = null;
     @Builder.Default
     private int timeoutMillis = (int) TimeUnit.MINUTES.toMillis(1L);
 }
