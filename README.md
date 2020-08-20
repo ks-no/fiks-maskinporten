@@ -92,4 +92,4 @@ maskinporten:
   issuer: <ISSUER>
   numberOfSecondsLeftBeforeExpire: <NUMBER_OF_SECOUNDS>
 ```
-
+I fra versjon 1.0.16 er det også mulig å oppgi _"consumerOrg"_ dersom man skal opptre på [vegne av en annen aktør (delegering)](https://difi.github.io/felleslosninger/maskinporten_func_delegering.html). Settes i så fall til orgnr til aktør man skal opptre på vegne av. Krever også at oppgitt Maskinporten scope er satt opp til å kreve dette.
