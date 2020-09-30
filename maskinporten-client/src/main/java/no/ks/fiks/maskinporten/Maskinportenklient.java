@@ -6,6 +6,8 @@ import com.nimbusds.jose.util.Base64;
 import com.nimbusds.jose.util.JSONObjectUtils;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import lombok.Builder;
+import lombok.Data;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.expiringmap.ExpirationPolicy;
@@ -38,7 +40,7 @@ public class Maskinportenklient {
     private final MaskinportenklientProperties properties;
     private final JWSHeader jwsHeader;
     private final JWSSigner signer;
-    private final ExpiringMap<Set<String>, String> map;
+    private final ExpiringMap<AccessTokenRequest, String> map;
 
     public Maskinportenklient(@NonNull KeyStore keyStore, String privateKeyAlias,  char[] privateKeyPassword, @NonNull MaskinportenklientProperties properties) throws KeyStoreException, CertificateEncodingException, UnrecoverableKeyException, NoSuchAlgorithmException {
         this((PrivateKey) keyStore.getKey(privateKeyAlias, privateKeyPassword), (X509Certificate) keyStore.getCertificate(privateKeyAlias), properties);
@@ -53,8 +55,8 @@ public class Maskinportenklient {
 
         map = ExpiringMap.builder()
                 .variableExpiration()
-                .expiringEntryLoader((ExpiringEntryLoader<Set<String>, String>) scopes -> {
-                    final JSONObject json = parse(doAcquireAccessToken(scopes));
+                .expiringEntryLoader((ExpiringEntryLoader<AccessTokenRequest, String>) tokenRequest -> {
+                    final JSONObject json = parse(doAcquireAccessToken(tokenRequest));
                     final JSONObject accessToken = parseAccessToken(json);
                     final long expiresIn = (long) json.getAsNumber("expires_in");
                     final long duration = expiresIn - properties.getNumberOfSecondsLeftBeforeExpire();
@@ -66,24 +68,38 @@ public class Maskinportenklient {
     }
 
     public String getAccessToken(@NonNull Collection<String> scopes) {
-        if(scopes.isEmpty()) {
-            throw new IllegalArgumentException("Minst ett scope må oppgies");
-        }
-        return map.get(new HashSet<>(scopes));
+
+        return getTokenForRequest(AccessTokenRequest.builder().scopes(new HashSet<>(scopes)).build());
     }
 
     public String getAccessToken(String... scopes) {
-        return getAccessToken(Arrays.asList(String.join(" ", scopes).split("\\s")));
+        return getAccessToken(scopesToCollection(scopes));
     }
 
-    protected String createJwtRequestForAccessToken(String... scopes) throws JOSEException {
+    public String getDelegatedAccessToken(@NonNull String consumerOrg, @NonNull Collection<String> scopes) {
+
+        return getTokenForRequest(AccessTokenRequest.builder().scopes(new HashSet<>(scopes)).consumerOrg(consumerOrg).build());
+    }
+
+    public String getDelegatedAccessToken(@NonNull String consumerOrg, String... scopes) {
+        return getDelegatedAccessToken(consumerOrg, scopesToCollection(scopes));
+    }
+
+    private String getTokenForRequest(@NonNull AccessTokenRequest accessTokenRequest) {
+        if(accessTokenRequest.getScopes().isEmpty()) {
+            throw new IllegalArgumentException("Minst ett scope må oppgies");
+        }
+        return map.get(accessTokenRequest);
+    }
+
+    protected String createJwtRequestForAccessToken(AccessTokenRequest accessTokenRequest) throws JOSEException {
         final long issuedTimeInMillis = System.currentTimeMillis();
         final long expirationTimeInMillis = issuedTimeInMillis + MILLISECONDS.convert(2, MINUTES);
 
         final String audience = properties.getAudience();
         final String issuer = properties.getIssuer();
-        final String claimScopes = String.join(" ", scopes);
-        final String consumerOrg = properties.getConsumerOrg();
+        final String claimScopes = accessTokenRequest.getScopes().stream().collect(Collectors.joining(" "));
+        final String consumerOrg = Optional.ofNullable(accessTokenRequest.consumerOrg).orElse(properties.getConsumerOrg());
         log.debug("Signing JWTRequest with audience='{}',issuer='{}',scopes='{}',consumerOrg='{}'", audience, issuer, claimScopes, consumerOrg);
         final JWTClaimsSet.Builder claimBuilder = new JWTClaimsSet.Builder()
                 .audience(audience)
@@ -92,6 +108,7 @@ public class Maskinportenklient {
                 .jwtID(UUID.randomUUID().toString())
                 .issueTime(new Date(issuedTimeInMillis))
                 .expirationTime(new Date(expirationTimeInMillis));
+
         if(consumerOrg != null) {
             claimBuilder.claim(CLAIM_CONSUMER_ORG, consumerOrg);
         }
@@ -101,19 +118,19 @@ public class Maskinportenklient {
         return signedJWT.serialize();
     }
 
-    private String doAcquireAccessToken(Set<String> scopes) {
+    private String doAcquireAccessToken(AccessTokenRequest accessTokenRequest) {
         try {
-            return acquireAccessToken(scopes);
+            return acquireAccessToken(accessTokenRequest);
         } catch (JOSEException | IOException e) {
             log.error("Could not acquire access token due to an exception", e);
             throw new RuntimeException(e);
         }
     }
 
-    private String acquireAccessToken(Set<String> scopes) throws JOSEException, IOException {
+    private String acquireAccessToken(AccessTokenRequest accessTokenRequest) throws JOSEException, IOException {
         final byte[] postData = "grant_type={grant_type}&assertion={assertion}"
                 .replace("{grant_type}", GRANT_TYPE)
-                .replace("{assertion}", createJwtRequestForAccessToken(scopes.toArray(new String[]{})))
+                .replace("{assertion}", createJwtRequestForAccessToken(accessTokenRequest))
                 .getBytes(StandardCharsets.UTF_8);
         final int postDataLength = postData.length;
 
@@ -143,7 +160,7 @@ public class Maskinportenklient {
         }
 
         throw new RuntimeException(String.format("Http response code: %s, url: '%s', scopes: '%s', message: '%s'", con.getResponseCode(),
-                                                 tokenEndpointUrlString, scopes, toString(con.getErrorStream())));
+                                                 tokenEndpointUrlString, accessTokenRequest, toString(con.getErrorStream())));
     }
 
     private String toString(InputStream inputStream) throws IOException {
@@ -173,5 +190,17 @@ public class Maskinportenklient {
         } catch (ParseException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static Collection<String> scopesToCollection(String... scopes) {
+        return Arrays.asList(String.join(" ", scopes).split("\\s"));
+    }
+
+    @Data
+    @Builder
+    private static final class AccessTokenRequest {
+        @NonNull
+        private final Set<String> scopes;
+        private final String consumerOrg;
     }
 }
