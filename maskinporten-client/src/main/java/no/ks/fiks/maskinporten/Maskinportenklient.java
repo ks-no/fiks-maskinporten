@@ -162,7 +162,7 @@ public class Maskinportenklient {
         }
         final String errorFromMaskinporten = toString(con.getErrorStream());
         final String exceptionMessage = String.format("Http response code: %s, url: '%s', scopes: '%s', message: '%s'", con.getResponseCode(),
-                tokenEndpointUrlString, accessTokenRequest, toString(con.getErrorStream()));
+                tokenEndpointUrlString, accessTokenRequest, errorFromMaskinporten);
         if(responseCode >= 400 && responseCode < 500) {
             throw new MaskinportenClientTokenRequestException(exceptionMessage, responseCode, errorFromMaskinporten);
         } else {
