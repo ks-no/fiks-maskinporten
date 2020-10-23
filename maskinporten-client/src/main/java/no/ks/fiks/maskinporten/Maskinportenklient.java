@@ -102,12 +102,13 @@ public class Maskinportenklient {
         final String issuer = properties.getIssuer();
         final String claimScopes = accessTokenRequest.getScopes().stream().collect(Collectors.joining(" "));
         final String consumerOrg = Optional.ofNullable(accessTokenRequest.consumerOrg).orElse(properties.getConsumerOrg());
-        log.debug("Signing JWTRequest with audience='{}',issuer='{}',scopes='{}',consumerOrg='{}'", audience, issuer, claimScopes, consumerOrg);
+        String jtiId = UUID.randomUUID().toString();
+        log.debug("Signing JWTRequest with audience='{}',issuer='{}',scopes='{}',consumerOrg='{}', jtiId='{}'", audience, issuer, claimScopes, consumerOrg, jtiId);
         final JWTClaimsSet.Builder claimBuilder = new JWTClaimsSet.Builder()
                 .audience(audience)
                 .issuer(issuer)
                 .claim(CLAIM_SCOPE, claimScopes)
-                .jwtID(UUID.randomUUID().toString())
+                .jwtID(jtiId)
                 .issueTime(new Date(issuedTimeInMillis))
                 .expirationTime(new Date(expirationTimeInMillis));
 
