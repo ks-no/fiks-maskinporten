@@ -25,11 +25,11 @@
   </scm>
   <properties>
     <nimbus-jose-jwt.version>8.4</nimbus-jose-jwt.version>
-    <virksomhetssertifikat.version>1.0.11</virksomhetssertifikat.version>
     <maven.compiler.source>1.8</maven.compiler.source>
+    <virksomhetssertifikat.version>1.0.11</virksomhetssertifikat.version>
     <expiringmap.version>0.5.9</expiringmap.version>
     <json-smart.version>2.3</json-smart.version>
-    <revision>1.0.19</revision>
+    <revision>1.0.20</revision>
     <lombok.version>1.18.14</lombok.version>
     <maven.compiler.target>1.8</maven.compiler.target>
     <slf4j.version>1.7.30</slf4j.version>
