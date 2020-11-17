@@ -196,7 +196,6 @@ public class Maskinportenklient {
                 .setCharset(Charsets.UTF_8)
                 .addHeader("Charset", Charsets.UTF_8.name())
                 .addHeader(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_FORM_URLENCODED.getMimeType())
-                .addHeader(HttpHeaders.CONTENT_LENGTH, Integer.toString(entityBuffer.length))
                 .setEntity(entityBuffer, ContentType.APPLICATION_FORM_URLENCODED)
                 .build();
     }
