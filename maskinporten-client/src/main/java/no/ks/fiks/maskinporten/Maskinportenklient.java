@@ -17,10 +17,17 @@ import net.jodah.expiringmap.ExpiringValue;
 import net.minidev.json.JSONObject;
 import no.ks.fiks.maskinporten.error.MaskinportenClientTokenRequestException;
 import no.ks.fiks.maskinporten.error.MaskinportenTokenRequestException;
+import org.apache.commons.codec.Charsets;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
+import org.apache.hc.core5.http.*;
+import org.apache.hc.core5.http.io.HttpClientResponseHandler;
+import org.apache.hc.core5.http.io.support.ClassicRequestBuilder;
 
-import java.io.*;
-import java.net.HttpURLConnection;
-import java.net.URL;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.security.cert.CertificateEncodingException;
@@ -135,52 +142,66 @@ public class Maskinportenklient {
                 .replace("{grant_type}", GRANT_TYPE)
                 .replace("{assertion}", createJwtRequestForAccessToken(accessTokenRequest))
                 .getBytes(StandardCharsets.UTF_8);
-        final int postDataLength = postData.length;
 
         final String tokenEndpointUrlString = properties.getTokenEndpoint();
         log.debug("Acquiring access token from \"{}\"", tokenEndpointUrlString);
         long startTime = System.currentTimeMillis();
-        final URL tokenEndpoint = new URL(tokenEndpointUrlString);
-        final HttpURLConnection con = (HttpURLConnection) tokenEndpoint.openConnection();
-        con.setConnectTimeout(properties.getTimeoutMillis());
-        con.setReadTimeout(properties.getTimeoutMillis());
-        con.setDoOutput(true);
-        con.setInstanceFollowRedirects(false);
-        con.setRequestMethod("POST");
-        con.setRequestProperty("Charset", "utf-8");
-        con.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-        con.setRequestProperty("Content-Length", Integer.toString(postDataLength));
-        con.setUseCaches(false);
+        try(final CloseableHttpClient httpClient = HttpClientBuilder.create()
+                .disableAutomaticRetries()
+                .disableRedirectHandling()
+                .disableAuthCaching()
+                .build()) {
+            return httpClient.execute(createHttpRequest(postData), new HttpClientResponseHandler<String>() {
+                @Override
+                public String handleResponse(final ClassicHttpResponse classicHttpResponse) throws IOException {
+                    int responseCode = classicHttpResponse.getCode();
+                    log.debug("Access token response received in {} ms with status {}", System.currentTimeMillis() - startTime, responseCode);
 
-        try (final DataOutputStream dos = new DataOutputStream(con.getOutputStream())) {
-            dos.write(postData);
-        }
+                    if (HttpStatus.SC_OK == responseCode) {
+                        try (final InputStream contentStream = classicHttpResponse.getEntity().getContent()) {
+                            return toString(contentStream);
+                        }
+                    } else {
+                        final String errorFromMaskinporten;
+                        try (final InputStream errorContentStream = classicHttpResponse.getEntity().getContent()) {
+                            errorFromMaskinporten = toString(errorContentStream);
+                        }
+                        final String exceptionMessage = String.format("Http response code: %s, url: '%s', scopes: '%s', message: '%s'", responseCode,
+                                tokenEndpointUrlString, accessTokenRequest, errorFromMaskinporten);
+                        if (responseCode >= HttpStatus.SC_BAD_REQUEST && responseCode < HttpStatus.SC_INTERNAL_SERVER_ERROR) {
+                            throw new MaskinportenClientTokenRequestException(exceptionMessage, responseCode, errorFromMaskinporten);
+                        } else {
+                            throw new MaskinportenTokenRequestException(exceptionMessage, responseCode, errorFromMaskinporten);
+                        }
+                    }
+                }
 
-        int responseCode = con.getResponseCode();
-        log.debug("Access token response received in {} ms with status {}", System.currentTimeMillis() - startTime, responseCode);
-        if (responseCode == 200) {
-            return toString(con.getInputStream());
-        }
-        final String errorFromMaskinporten = toString(con.getErrorStream());
-        final String exceptionMessage = String.format("Http response code: %s, url: '%s', scopes: '%s', message: '%s'", con.getResponseCode(),
-                tokenEndpointUrlString, accessTokenRequest, errorFromMaskinporten);
-        if(responseCode >= 400 && responseCode < 500) {
-            throw new MaskinportenClientTokenRequestException(exceptionMessage, responseCode, errorFromMaskinporten);
-        } else {
-            throw new MaskinportenTokenRequestException(exceptionMessage, responseCode, errorFromMaskinporten);
+                private String toString(InputStream inputStream) throws IOException {
+                    if (inputStream == null) {
+                        return null;
+                    }
+
+                    try (InputStreamReader isr = new InputStreamReader(inputStream);
+                         BufferedReader br = new BufferedReader(isr)) {
+                        return br.lines().collect(Collectors.joining("\n"));
+                    }
+                }
+
+            });
         }
     }
 
-    private String toString(InputStream inputStream) throws IOException {
-        if (inputStream == null) {
-            return null;
-        }
-
-        try (InputStreamReader isr = new InputStreamReader(inputStream);
-             BufferedReader br = new BufferedReader(isr)) {
-            return br.lines().collect(Collectors.joining("\n"));
-        }
+    private ClassicHttpRequest createHttpRequest(byte[] entityBuffer) {
+        return ClassicRequestBuilder.post(properties.getTokenEndpoint())
+                .setCharset(Charsets.UTF_8)
+                .addHeader("Charset", Charsets.UTF_8.name())
+                .addHeader(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_FORM_URLENCODED.getMimeType())
+                .addHeader(HttpHeaders.CONTENT_LENGTH, Integer.toString(entityBuffer.length))
+                .setEntity(entityBuffer, ContentType.APPLICATION_FORM_URLENCODED)
+                .build();
     }
+
+
 
     private JSONObject parse(String value) {
         try {
