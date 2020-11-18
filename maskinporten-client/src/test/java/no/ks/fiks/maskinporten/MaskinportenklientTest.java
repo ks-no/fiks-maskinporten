@@ -16,6 +16,7 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import io.netty.handler.codec.http.HttpMethod;
 import no.ks.fiks.maskinporten.error.MaskinportenClientTokenRequestException;
+import no.ks.fiks.maskinporten.error.MaskinportenTokenRequestException;
 import no.ks.fiks.virksomhetsertifikat.Sertifikat;
 import no.ks.fiks.virksomhetsertifikat.SertifikatType;
 import no.ks.fiks.virksomhetsertifikat.VirksomhetSertifikater;
@@ -44,7 +45,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.mockserver.model.HttpClassCallback.callback;
 import static org.mockserver.model.HttpRequest.request;
 import static org.mockserver.model.HttpResponse.response;
@@ -172,6 +174,30 @@ class MaskinportenklientTest {
         }
     }
 
+    @DisplayName("Generate access token fails. The client should not retry")
+    @Test
+    void getAccessTokenFails() {
+        try (final ClientAndServer client = ClientAndServer.startClientAndServer()) {
+            client.when(
+                    request()
+                            .withSecure(false)
+                            .withMethod(HttpMethod.POST.name())
+                            .withPath("/token")
+                            .withBody(
+                                    params(
+                                            param("grant_type", Maskinportenklient.GRANT_TYPE)
+                                    )
+                            ),
+                    Times.exactly(1))
+                    .respond(response()
+                            .withBody("FAILURE WAS AN OPTION AFTER ALL")
+                            .withStatusCode(HttpStatusCode.INTERNAL_SERVER_ERROR_500.code()));
+            final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()));
+            final MaskinportenTokenRequestException exception = catchThrowableOfType(() -> maskinportenklient.getAccessToken(SCOPE), MaskinportenTokenRequestException.class);
+            assertThat(exception.getStatusCode()).isEqualTo(HttpStatusCode.INTERNAL_SERVER_ERROR_500.code());
+        }
+    }
+
     @DisplayName("Try to get generated delegated token, but fails due to missing delegation in Altinn")
     @Test
     void getDelegatedAccessTokenFails403() {
@@ -192,6 +218,7 @@ class MaskinportenklientTest {
             final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()));
             MaskinportenClientTokenRequestException thrown = catchThrowableOfType(() -> maskinportenklient.getDelegatedAccessToken(consumerOrg, SCOPE), MaskinportenClientTokenRequestException.class);
             assertThat(thrown.getMaskinportenError()).isEqualTo(maskinportenError);
+            assertThat(thrown.getStatusCode()).isEqualTo(HttpStatusCode.FORBIDDEN_403.code());
         }
     }
 
@@ -199,7 +226,7 @@ class MaskinportenklientTest {
     @Test
     void getDelegatedAccessToken() {
         final String consumerOrg = "888888888";
-        try(final ClientAndServer client = ClientAndServer.startClientAndServer()) {
+        try (final ClientAndServer client = ClientAndServer.startClientAndServer()) {
             client.when(
                     request()
                             .withSecure(false)
