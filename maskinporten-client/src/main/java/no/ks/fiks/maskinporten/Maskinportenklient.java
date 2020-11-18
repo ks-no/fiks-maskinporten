@@ -20,7 +20,6 @@ import no.ks.fiks.maskinporten.error.MaskinportenTokenRequestException;
 import org.apache.commons.codec.Charsets;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
-import org.apache.hc.client5.http.impl.io.BasicHttpClientConnectionManager;
 import org.apache.hc.core5.http.*;
 import org.apache.hc.core5.http.io.HttpClientResponseHandler;
 import org.apache.hc.core5.http.io.support.ClassicRequestBuilder;
@@ -44,7 +43,7 @@ import static java.util.concurrent.TimeUnit.MINUTES;
 
 @Slf4j
 public class Maskinportenklient {
-    private static final String GRANT_TYPE = "urn:ietf:params:oauth:grant-type:jwt-bearer";
+    static final String GRANT_TYPE = "urn:ietf:params:oauth:grant-type:jwt-bearer";
     static final String CLAIM_SCOPE = "scope";
     static final String CLAIM_CONSUMER_ORG = "consumer_org";
     private final MaskinportenklientProperties properties;
@@ -151,7 +150,6 @@ public class Maskinportenklient {
                 .disableAutomaticRetries()
                 .disableRedirectHandling()
                 .disableAuthCaching()
-                .setConnectionManager(new BasicHttpClientConnectionManager())
                 .build()) {
             return httpClient.execute(createHttpRequest(postData), new HttpClientResponseHandler<String>() {
                 @Override
