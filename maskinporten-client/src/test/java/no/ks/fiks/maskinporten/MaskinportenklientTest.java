@@ -21,10 +21,12 @@ import no.ks.fiks.virksomhetsertifikat.Sertifikat;
 import no.ks.fiks.virksomhetsertifikat.SertifikatType;
 import no.ks.fiks.virksomhetsertifikat.VirksomhetSertifikater;
 import no.ks.fiks.virksomhetsertifikat.VirksomhetSertifikaterProperties;
+import org.apache.hc.client5.http.HttpHostConnectException;
 import org.apache.hc.core5.http.NameValuePair;
 import org.apache.hc.core5.net.URLEncodedUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.mockserver.integration.ClientAndServer;
 import org.mockserver.matchers.Times;
 import org.mockserver.mock.action.ExpectationResponseCallback;
@@ -33,6 +35,8 @@ import org.mockserver.model.HttpResponse;
 import org.mockserver.model.HttpStatusCode;
 import org.mockserver.model.MediaType;
 
+import java.io.IOException;
+import java.net.ServerSocket;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -196,6 +200,20 @@ class MaskinportenklientTest {
             final MaskinportenTokenRequestException exception = catchThrowableOfType(() -> maskinportenklient.getAccessToken(SCOPE), MaskinportenTokenRequestException.class);
             assertThat(exception.getStatusCode()).isEqualTo(HttpStatusCode.INTERNAL_SERVER_ERROR_500.code());
         }
+    }
+
+    @DisplayName("Generate access token fails due to a connection failure")
+    @Timeout(value = 60)
+    @Test
+    void getAccessTokenNetworkFailure() throws IOException {
+        int localport;
+        try(ServerSocket s = new ServerSocket(0)) {
+            localport = s.getLocalPort();
+        }
+        final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", localport));
+        final RuntimeException runtimeException = catchThrowableOfType(() -> maskinportenklient.getAccessToken(SCOPE), RuntimeException.class);
+        assertThat(runtimeException.getCause()).isInstanceOf(HttpHostConnectException.class);
+
     }
 
     @DisplayName("Try to get generated delegated token, but fails due to missing delegation in Altinn")
