@@ -44,7 +44,7 @@ import static java.util.concurrent.TimeUnit.MINUTES;
 
 @Slf4j
 public class Maskinportenklient {
-    private static final String GRANT_TYPE = "urn:ietf:params:oauth:grant-type:jwt-bearer";
+    static final String GRANT_TYPE = "urn:ietf:params:oauth:grant-type:jwt-bearer";
     static final String CLAIM_SCOPE = "scope";
     static final String CLAIM_CONSUMER_ORG = "consumer_org";
     private final MaskinportenklientProperties properties;
