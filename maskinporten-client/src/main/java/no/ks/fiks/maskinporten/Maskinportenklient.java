@@ -14,7 +14,6 @@ import net.jodah.expiringmap.ExpirationPolicy;
 import net.jodah.expiringmap.ExpiringEntryLoader;
 import net.jodah.expiringmap.ExpiringMap;
 import net.jodah.expiringmap.ExpiringValue;
-import net.minidev.json.JSONObject;
 import no.ks.fiks.maskinporten.error.MaskinportenClientTokenRequestException;
 import no.ks.fiks.maskinporten.error.MaskinportenTokenRequestException;
 import org.apache.commons.codec.Charsets;
@@ -51,7 +50,7 @@ public class Maskinportenklient {
     private final JWSSigner signer;
     private final ExpiringMap<AccessTokenRequest, String> map;
 
-    public Maskinportenklient(@NonNull KeyStore keyStore, String privateKeyAlias,  char[] privateKeyPassword, @NonNull MaskinportenklientProperties properties) throws KeyStoreException, CertificateEncodingException, UnrecoverableKeyException, NoSuchAlgorithmException {
+    public Maskinportenklient(@NonNull KeyStore keyStore, String privateKeyAlias, char[] privateKeyPassword, @NonNull MaskinportenklientProperties properties) throws KeyStoreException, CertificateEncodingException, UnrecoverableKeyException, NoSuchAlgorithmException {
         this((PrivateKey) keyStore.getKey(privateKeyAlias, privateKeyPassword), (X509Certificate) keyStore.getCertificate(privateKeyAlias), properties);
     }
 
@@ -65,15 +64,25 @@ public class Maskinportenklient {
         map = ExpiringMap.builder()
                 .variableExpiration()
                 .expiringEntryLoader((ExpiringEntryLoader<AccessTokenRequest, String>) tokenRequest -> {
-                    final JSONObject json = parse(doAcquireAccessToken(tokenRequest));
-                    final JSONObject accessToken = parseAccessToken(json);
-                    final long expiresIn = (long) json.getAsNumber("expires_in");
+                    final Map<String, Object> json = parse(doAcquireAccessToken(tokenRequest));
+                    final Map<String, Object> accessToken = parseAccessToken(json);
+                    final long expiresIn = getExpiresIn(json);
                     final long duration = expiresIn - properties.getNumberOfSecondsLeftBeforeExpire();
-                    long exp = TimeUnit.MILLISECONDS.convert((long) accessToken.getAsNumber("exp"), TimeUnit.SECONDS);
-                    log.info("Adding access token to cache; access_token.scopes: '{}', access_token.exp: {}, expires_in: {} seconds. Expires from cache in {} seconds ({}).", json.getAsString(CLAIM_SCOPE), new Date(exp), expiresIn, duration, new Date(System.currentTimeMillis() + (1000 * duration)));
-                    return new ExpiringValue<>(json.getAsString("access_token"), ExpirationPolicy.CREATED, duration, TimeUnit.SECONDS);
+                    long exp = TimeUnit.MILLISECONDS.convert(getExp(accessToken), TimeUnit.SECONDS);
+                    log.info("Adding access token to cache; access_token.scopes: '{}', access_token.exp: {}, expires_in: {} seconds. Expires from cache in {} seconds ({}).", json.get(CLAIM_SCOPE), new Date(exp), expiresIn, duration, new Date(System.currentTimeMillis() + (1000 * duration)));
+                    return new ExpiringValue<>(json.get("access_token").toString(), ExpirationPolicy.CREATED, duration, TimeUnit.SECONDS);
                 })
                 .build();
+    }
+
+    private long getExpiresIn(Map<String, Object> json) {
+        Object value = Objects.requireNonNull(json.get("expires_in"), "JSON response fra Maskinporten mangler felt 'expires_in'");
+        return Long.parseLong(value.toString());
+    }
+
+    private long getExp(Map<String, Object> accessToken) {
+        Object value = Objects.requireNonNull(accessToken.get("exp"), "Access token fra Maskinporten mangler felt 'exp'");
+        return Long.parseLong(value.toString());
     }
 
     public String getAccessToken(@NonNull Collection<String> scopes) {
@@ -95,7 +104,7 @@ public class Maskinportenklient {
     }
 
     private String getTokenForRequest(@NonNull AccessTokenRequest accessTokenRequest) {
-        if(accessTokenRequest.getScopes().isEmpty()) {
+        if (accessTokenRequest.getScopes().isEmpty()) {
             throw new IllegalArgumentException("Minst ett scope må oppgies");
         }
         return map.get(accessTokenRequest);
@@ -107,7 +116,7 @@ public class Maskinportenklient {
 
         final String audience = properties.getAudience();
         final String issuer = properties.getIssuer();
-        final String claimScopes = accessTokenRequest.getScopes().stream().collect(Collectors.joining(" "));
+        final String claimScopes = String.join(" ", accessTokenRequest.getScopes());
         final String consumerOrg = Optional.ofNullable(accessTokenRequest.consumerOrg).orElse(properties.getConsumerOrg());
         String jtiId = UUID.randomUUID().toString();
         log.debug("Signing JWTRequest with audience='{}',issuer='{}',scopes='{}',consumerOrg='{}', jtiId='{}'", audience, issuer, claimScopes, consumerOrg, jtiId);
@@ -119,7 +128,7 @@ public class Maskinportenklient {
                 .issueTime(new Date(issuedTimeInMillis))
                 .expirationTime(new Date(expirationTimeInMillis));
 
-        if(consumerOrg != null) {
+        if (consumerOrg != null) {
             claimBuilder.claim(CLAIM_CONSUMER_ORG, consumerOrg);
         }
         final SignedJWT signedJWT = new SignedJWT(jwsHeader, claimBuilder
@@ -146,7 +155,7 @@ public class Maskinportenklient {
         final String tokenEndpointUrlString = properties.getTokenEndpoint();
         log.debug("Acquiring access token from \"{}\"", tokenEndpointUrlString);
         long startTime = System.currentTimeMillis();
-        try(final CloseableHttpClient httpClient = HttpClientBuilder.create()
+        try (final CloseableHttpClient httpClient = HttpClientBuilder.create()
                 .disableAutomaticRetries()
                 .disableRedirectHandling()
                 .disableAuthCaching()
@@ -201,8 +210,7 @@ public class Maskinportenklient {
     }
 
 
-
-    private JSONObject parse(String value) {
+    private Map<String, Object> parse(String value) {
         try {
             return JSONObjectUtils.parse(value);
         } catch (ParseException e) {
@@ -210,9 +218,10 @@ public class Maskinportenklient {
         }
     }
 
-    private JSONObject parseAccessToken(JSONObject json) {
+    private Map<String, Object> parseAccessToken(Map<String, Object> json) {
         try {
-            return JWSObject.parse(json.getAsString("access_token"))
+            Object accessToken = Objects.requireNonNull(json.get("access_token"), "JSON response fra Maskinporten mangler felt 'access_token'");
+            return JWSObject.parse(accessToken.toString())
                     .getPayload()
                     .toJSONObject();
         } catch (ParseException e) {
