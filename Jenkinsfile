@@ -1,1 +1,1 @@
-ciFriendlyLibBuildJdk11()
+ciFriendlyLibBuild()
