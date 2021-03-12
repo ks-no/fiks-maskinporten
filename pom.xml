@@ -26,7 +26,7 @@
   <properties>
     <nimbus-jose-jwt.version>8.21</nimbus-jose-jwt.version>
     <maven.compiler.source>1.8</maven.compiler.source>
-    <virksomhetssertifikat.version>1.1.0</virksomhetssertifikat.version>
+    <virksomhetssertifikat.version>1.1.1</virksomhetssertifikat.version>
     <expiringmap.version>0.5.9</expiringmap.version>
     <json-smart.version>2.3</json-smart.version>
     <mockserver.version>5.11.2</mockserver.version>
