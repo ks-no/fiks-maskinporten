@@ -9,7 +9,6 @@ import com.nimbusds.jwt.SignedJWT;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NonNull;
-import lombok.extern.slf4j.Slf4j;
 import net.jodah.expiringmap.ExpirationPolicy;
 import net.jodah.expiringmap.ExpiringEntryLoader;
 import net.jodah.expiringmap.ExpiringMap;
@@ -22,6 +21,9 @@ import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.apache.hc.core5.http.*;
 import org.apache.hc.core5.http.io.HttpClientResponseHandler;
 import org.apache.hc.core5.http.io.support.ClassicRequestBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -40,11 +42,12 @@ import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.MINUTES;
 
-@Slf4j
 public class Maskinportenklient {
+    private static final Logger log = LoggerFactory.getLogger(Maskinportenklient.class);
     static final String GRANT_TYPE = "urn:ietf:params:oauth:grant-type:jwt-bearer";
     static final String CLAIM_SCOPE = "scope";
     static final String CLAIM_CONSUMER_ORG = "consumer_org";
+    static final String MDC_JTIID = "jtiId";
     private final MaskinportenklientProperties properties;
     private final JWSHeader jwsHeader;
     private final JWSSigner signer;
@@ -110,7 +113,7 @@ public class Maskinportenklient {
         return map.get(accessTokenRequest);
     }
 
-    protected String createJwtRequestForAccessToken(AccessTokenRequest accessTokenRequest) throws JOSEException {
+    protected String createJwtRequestForAccessToken(AccessTokenRequest accessTokenRequest, String jtiId) throws JOSEException {
         final long issuedTimeInMillis = System.currentTimeMillis();
         final long expirationTimeInMillis = issuedTimeInMillis + MILLISECONDS.convert(2, MINUTES);
 
@@ -118,7 +121,6 @@ public class Maskinportenklient {
         final String issuer = properties.getIssuer();
         final String claimScopes = String.join(" ", accessTokenRequest.getScopes());
         final String consumerOrg = Optional.ofNullable(accessTokenRequest.consumerOrg).orElse(properties.getConsumerOrg());
-        String jtiId = UUID.randomUUID().toString();
         log.debug("Signing JWTRequest with audience='{}',issuer='{}',scopes='{}',consumerOrg='{}', jtiId='{}'", audience, issuer, claimScopes, consumerOrg, jtiId);
         final JWTClaimsSet.Builder claimBuilder = new JWTClaimsSet.Builder()
                 .audience(audience)
@@ -147,56 +149,60 @@ public class Maskinportenklient {
     }
 
     private String acquireAccessToken(AccessTokenRequest accessTokenRequest) throws JOSEException, IOException {
-        final byte[] postData = "grant_type={grant_type}&assertion={assertion}"
-                .replace("{grant_type}", GRANT_TYPE)
-                .replace("{assertion}", createJwtRequestForAccessToken(accessTokenRequest))
-                .getBytes(StandardCharsets.UTF_8);
+        final String jtiId = UUID.randomUUID().toString();
+        try(MDC.MDCCloseable ignore = MDC.putCloseable(MDC_JTIID, jtiId)) {
+            final byte[] postData = "grant_type={grant_type}&assertion={assertion}"
+                    .replace("{grant_type}", GRANT_TYPE)
+                    .replace("{assertion}", createJwtRequestForAccessToken(accessTokenRequest, jtiId))
+                    .getBytes(StandardCharsets.UTF_8);
 
-        final String tokenEndpointUrlString = properties.getTokenEndpoint();
-        log.debug("Acquiring access token from \"{}\"", tokenEndpointUrlString);
-        long startTime = System.currentTimeMillis();
-        try (final CloseableHttpClient httpClient = HttpClientBuilder.create()
-                .disableAutomaticRetries()
-                .disableRedirectHandling()
-                .disableAuthCaching()
-                .build()) {
-            return httpClient.execute(createHttpRequest(postData), new HttpClientResponseHandler<String>() {
-                @Override
-                public String handleResponse(final ClassicHttpResponse classicHttpResponse) throws IOException {
-                    int responseCode = classicHttpResponse.getCode();
-                    log.debug("Access token response received in {} ms with status {}", System.currentTimeMillis() - startTime, responseCode);
+            final String tokenEndpointUrlString = properties.getTokenEndpoint();
+            log.debug("Acquiring access token from \"{}\"", tokenEndpointUrlString);
+            long startTime = System.currentTimeMillis();
+            try (final CloseableHttpClient httpClient = HttpClientBuilder.create()
+                    .disableAutomaticRetries()
+                    .disableRedirectHandling()
+                    .disableAuthCaching()
+                    .build()) {
+                return httpClient.execute(createHttpRequest(postData), new HttpClientResponseHandler<String>() {
+                    @Override
+                    public String handleResponse(final ClassicHttpResponse classicHttpResponse) throws IOException {
+                        int responseCode = classicHttpResponse.getCode();
+                        log.debug("Access token response received in {} ms with status {}", System.currentTimeMillis() - startTime, responseCode);
 
-                    if (HttpStatus.SC_OK == responseCode) {
-                        try (final InputStream contentStream = classicHttpResponse.getEntity().getContent()) {
-                            return toString(contentStream);
-                        }
-                    } else {
-                        final String errorFromMaskinporten;
-                        try (final InputStream errorContentStream = classicHttpResponse.getEntity().getContent()) {
-                            errorFromMaskinporten = toString(errorContentStream);
-                        }
-                        final String exceptionMessage = String.format("Http response code: %s, url: '%s', scopes: '%s', message: '%s'", responseCode,
-                                tokenEndpointUrlString, accessTokenRequest, errorFromMaskinporten);
-                        if (responseCode >= HttpStatus.SC_BAD_REQUEST && responseCode < HttpStatus.SC_INTERNAL_SERVER_ERROR) {
-                            throw new MaskinportenClientTokenRequestException(exceptionMessage, responseCode, errorFromMaskinporten);
+                        if (HttpStatus.SC_OK == responseCode) {
+                            try (final InputStream contentStream = classicHttpResponse.getEntity().getContent()) {
+                                return toString(contentStream);
+                            }
                         } else {
-                            throw new MaskinportenTokenRequestException(exceptionMessage, responseCode, errorFromMaskinporten);
+                            final String errorFromMaskinporten;
+                            try (final InputStream errorContentStream = classicHttpResponse.getEntity().getContent()) {
+                                errorFromMaskinporten = toString(errorContentStream);
+                            }
+                            final String exceptionMessage = String.format("Http response code: %s, url: '%s', scopes: '%s', message: '%s'", responseCode,
+                                    tokenEndpointUrlString, accessTokenRequest, errorFromMaskinporten);
+                            log.warn("Failed to get token: {}", errorFromMaskinporten);
+                            if (responseCode >= HttpStatus.SC_BAD_REQUEST && responseCode < HttpStatus.SC_INTERNAL_SERVER_ERROR) {
+                                throw new MaskinportenClientTokenRequestException(exceptionMessage, responseCode, errorFromMaskinporten);
+                            } else {
+                                throw new MaskinportenTokenRequestException(exceptionMessage, responseCode, errorFromMaskinporten);
+                            }
                         }
                     }
-                }
 
-                private String toString(InputStream inputStream) throws IOException {
-                    if (inputStream == null) {
-                        return null;
+                    private String toString(InputStream inputStream) throws IOException {
+                        if (inputStream == null) {
+                            return null;
+                        }
+
+                        try (InputStreamReader isr = new InputStreamReader(inputStream);
+                             BufferedReader br = new BufferedReader(isr)) {
+                            return br.lines().collect(Collectors.joining("\n"));
+                        }
                     }
 
-                    try (InputStreamReader isr = new InputStreamReader(inputStream);
-                         BufferedReader br = new BufferedReader(isr)) {
-                        return br.lines().collect(Collectors.joining("\n"));
-                    }
-                }
-
-            });
+                });
+            }
         }
     }
 
