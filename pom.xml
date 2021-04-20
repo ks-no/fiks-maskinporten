@@ -28,7 +28,7 @@
     <virksomhetssertifikat.version>1.1.1</virksomhetssertifikat.version>
     <maven.compiler.source>1.8</maven.compiler.source>
     <expiringmap.version>0.5.9</expiringmap.version>
-    <json-smart.version>2.3</json-smart.version>
+    <json-smart.version>2.4.5</json-smart.version>
     <mockserver.version>5.11.2</mockserver.version>
     <revision>1.1.3</revision>
     <lombok.version>1.18.18</lombok.version>
