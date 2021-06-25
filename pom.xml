@@ -38,7 +38,7 @@
     <lang-tag.version>1.5</lang-tag.version>
     <oauth2-oidc-sdk.version>9.9</oauth2-oidc-sdk.version>
     <changelist>-SNAPSHOT</changelist>
-    <hibernate-validator.version>6.1.5.Final</hibernate-validator.version>
+    <hibernate-validator.version>6.2.0.Final</hibernate-validator.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <assertj.version>3.20.2</assertj.version>
     <junit.version>5.7.2</junit.version>
