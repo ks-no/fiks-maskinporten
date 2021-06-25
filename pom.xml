@@ -24,7 +24,7 @@
     <url>https://github.com/ks-no/fiks-maskinporten</url>
   </scm>
   <properties>
-    <nimbus-jose-jwt.version>8.21</nimbus-jose-jwt.version>
+    <nimbus-jose-jwt.version>9.10</nimbus-jose-jwt.version>
     <virksomhetssertifikat.version>1.1.1</virksomhetssertifikat.version>
     <maven.compiler.source>1.8</maven.compiler.source>
     <expiringmap.version>0.5.9</expiringmap.version>
