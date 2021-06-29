@@ -1,1 +1,1 @@
-ciFriendlyLibBuild()
+libPipelineMvnCentral()
