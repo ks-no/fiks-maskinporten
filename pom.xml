@@ -42,7 +42,7 @@
     <oauth2-oidc-sdk.version>9.17</oauth2-oidc-sdk.version>
     <hibernate-validator.version>6.2.0.Final</hibernate-validator.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <assertj.version>3.20.2</assertj.version>
+    <assertj.version>3.21.0</assertj.version>
     <junit.version>5.8.1</junit.version>
     <apache-httpclient.version>5.1</apache-httpclient.version>
     <maven-deploy-plugin.version>2.8.2</maven-deploy-plugin.version>
