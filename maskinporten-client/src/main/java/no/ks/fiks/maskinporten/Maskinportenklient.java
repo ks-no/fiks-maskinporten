@@ -7,15 +7,14 @@ import com.nimbusds.jose.util.JSONObjectUtils;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import lombok.Builder;
-import lombok.Data;
 import lombok.NonNull;
+import lombok.Value;
 import net.jodah.expiringmap.ExpirationPolicy;
 import net.jodah.expiringmap.ExpiringEntryLoader;
 import net.jodah.expiringmap.ExpiringMap;
 import net.jodah.expiringmap.ExpiringValue;
 import no.ks.fiks.maskinporten.error.MaskinportenClientTokenRequestException;
 import no.ks.fiks.maskinporten.error.MaskinportenTokenRequestException;
-import org.apache.commons.codec.Charsets;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.apache.hc.core5.http.*;
@@ -43,11 +42,15 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.MINUTES;
 
 public class Maskinportenklient {
+
     private static final Logger log = LoggerFactory.getLogger(Maskinportenklient.class);
+
     static final String GRANT_TYPE = "urn:ietf:params:oauth:grant-type:jwt-bearer";
     static final String CLAIM_SCOPE = "scope";
     static final String CLAIM_CONSUMER_ORG = "consumer_org";
+    static final String CLAIM_RESOURCE = "resource";
     static final String MDC_JTIID = "jtiId";
+
     private final MaskinportenklientProperties properties;
     private final JWSHeader jwsHeader;
     private final JWSSigner signer;
@@ -89,7 +92,6 @@ public class Maskinportenklient {
     }
 
     public String getAccessToken(@NonNull Collection<String> scopes) {
-
         return getTokenForRequest(AccessTokenRequest.builder().scopes(new HashSet<>(scopes)).build());
     }
 
@@ -104,6 +106,14 @@ public class Maskinportenklient {
 
     public String getDelegatedAccessToken(@NonNull String consumerOrg, String... scopes) {
         return getDelegatedAccessToken(consumerOrg, scopesToCollection(scopes));
+    }
+
+    public String getAccessTokenWithAudience(@NonNull String audience, @NonNull Collection<String> scopes) {
+        return getTokenForRequest(AccessTokenRequest.builder().scopes(new HashSet<>(scopes)).audience(audience).build());
+    }
+
+    public String getAccessTokenWithAudience(@NonNull String audience, String... scopes) {
+        return getAccessTokenWithAudience(audience, scopesToCollection(scopes));
     }
 
     private String getTokenForRequest(@NonNull AccessTokenRequest accessTokenRequest) {
@@ -129,10 +139,9 @@ public class Maskinportenklient {
                 .jwtID(jtiId)
                 .issueTime(new Date(issuedTimeInMillis))
                 .expirationTime(new Date(expirationTimeInMillis));
+        Optional.ofNullable(consumerOrg).ifPresent(it -> claimBuilder.claim(CLAIM_CONSUMER_ORG, it));
+        Optional.ofNullable(accessTokenRequest.audience).ifPresent(it -> claimBuilder.claim(CLAIM_RESOURCE, it));
 
-        if (consumerOrg != null) {
-            claimBuilder.claim(CLAIM_CONSUMER_ORG, consumerOrg);
-        }
         final SignedJWT signedJWT = new SignedJWT(jwsHeader, claimBuilder
                 .build());
         signedJWT.sign(signer);
@@ -208,8 +217,8 @@ public class Maskinportenklient {
 
     private ClassicHttpRequest createHttpRequest(byte[] entityBuffer) {
         return ClassicRequestBuilder.post(properties.getTokenEndpoint())
-                .setCharset(Charsets.UTF_8)
-                .addHeader("Charset", Charsets.UTF_8.name())
+                .setCharset(StandardCharsets.UTF_8)
+                .addHeader("Charset", StandardCharsets.UTF_8.name())
                 .addHeader(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_FORM_URLENCODED.getMimeType())
                 .setEntity(entityBuffer, ContentType.APPLICATION_FORM_URLENCODED)
                 .build();
@@ -239,11 +248,11 @@ public class Maskinportenklient {
         return Arrays.asList(String.join(" ", scopes).split("\\s"));
     }
 
-    @Data
+    @Value
     @Builder
-    private static final class AccessTokenRequest {
-        @NonNull
-        private final Set<String> scopes;
-        private final String consumerOrg;
+    private static class AccessTokenRequest {
+        @NonNull Set<String> scopes;
+        String consumerOrg;
+        String audience;
     }
 }

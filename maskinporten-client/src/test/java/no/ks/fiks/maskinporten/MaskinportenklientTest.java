@@ -44,10 +44,9 @@ import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateEncodingException;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.text.ParseException;
 import java.time.Clock;
-import java.util.Date;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
@@ -91,21 +90,22 @@ class MaskinportenklientTest {
             final String assertion = formParamPairs.stream().filter(nv -> "assertion".equals(nv.getName())).map(NameValuePair::getValue).findFirst().orElseThrow(() -> new IllegalArgumentException("Fant ikke parameter \"assertion\""));
             final JWTClaimsSet jwtClaimsSet = SignedJWT.parse(assertion).getJWTClaimsSet();
             final String clientId = jwtClaimsSet.getStringArrayClaim("aud")[0];
-            final String scope = (String) jwtClaimsSet.getClaim("scope");
+            final String scope = jwtClaimsSet.getStringClaim("scope");
+            final String resource = jwtClaimsSet.getStringClaim("resource");
             return response()
                     .withStatusCode(HttpStatusCode.OK_200.code())
                     .withContentType(MediaType.APPLICATION_JSON)
-                    .withBody(generateToken(clientId, scope), MediaType.APPLICATION_JSON);
+                    .withBody(generateToken(clientId, scope, resource), MediaType.APPLICATION_JSON);
         }
 
-        private String generateToken(String clientId, String scope) {
-            JWTClaimsSet accessTokenClaimsSet = new JWTClaimsSet.Builder()
+        private String generateToken(String clientId, String scope, String resource) {
+            JWTClaimsSet.Builder claimsSetBuilder = new JWTClaimsSet.Builder()
                     .claim("consumer", ImmutableMap.of("authority", "iso6523-actorid-upis", "ID", "0192:971032146"))
                     .claim("client_id", clientId)
-                    .claim("scope", scope)
-                    .build();
+                    .claim("scope", scope);
+            Optional.ofNullable(resource).ifPresent(it -> claimsSetBuilder.claim("aud", resource));
             ObjectNode objectNode = MAPPER.createObjectNode();
-            objectNode.put("access_token", createJwt(accessTokenClaimsSet));
+            objectNode.put("access_token", createJwt(claimsSetBuilder.build()));
             objectNode.put("expires_in", 120);
             objectNode.put("scope", scope);
             try {
@@ -259,6 +259,31 @@ class MaskinportenklientTest {
             final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()));
             final String accessToken = maskinportenklient.getDelegatedAccessToken(consumerOrg, SCOPE);
             assertThat(accessToken).isNotBlank();
+        }
+    }
+
+    @DisplayName("Generate token with audience")
+    @Test
+    void getAccessTokenWithAudience() throws ParseException {
+        final String audience = UUID.randomUUID().toString();
+        try (final ClientAndServer client = ClientAndServer.startClientAndServer()) {
+            client.when(
+                    request()
+                            .withSecure(false)
+                            .withMethod(HttpMethod.POST.name())
+                            .withPath("/token")
+                            .withBody(
+                                    params(
+                                            param("grant_type", Maskinportenklient.GRANT_TYPE)
+                                    )
+                            )
+            ).respond(callback().withCallbackClass(OidcMockExpectation.class));
+            final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()));
+
+            final String accessToken = maskinportenklient.getAccessTokenWithAudience(audience, SCOPE);
+            assertThat(accessToken).isNotBlank();
+            SignedJWT jwt = SignedJWT.parse(accessToken);
+            assertThat(jwt.getJWTClaimsSet().getAudience()).isEqualTo(Collections.singletonList(audience));
         }
     }
 
