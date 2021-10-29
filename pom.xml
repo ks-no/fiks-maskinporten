@@ -6,7 +6,7 @@
   <parent>
     <groupId>no.ks.fiks.pom</groupId>
     <artifactId>fiks-ekstern-super-pom</artifactId>
-    <version>1.0.4</version>
+    <version>1.0.5</version>
   </parent>
 
   <groupId>no.ks.fiks</groupId>
