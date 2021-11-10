@@ -91,29 +91,8 @@ public class Maskinportenklient {
         return Long.parseLong(value.toString());
     }
 
-    public String getAccessToken(@NonNull Collection<String> scopes) {
-        return getTokenForRequest(AccessTokenRequest.builder().scopes(new HashSet<>(scopes)).build());
-    }
-
-    public String getAccessToken(String... scopes) {
-        return getAccessToken(scopesToCollection(scopes));
-    }
-
-    public String getDelegatedAccessToken(@NonNull String consumerOrg, @NonNull Collection<String> scopes) {
-
-        return getTokenForRequest(AccessTokenRequest.builder().scopes(new HashSet<>(scopes)).consumerOrg(consumerOrg).build());
-    }
-
-    public String getDelegatedAccessToken(@NonNull String consumerOrg, String... scopes) {
-        return getDelegatedAccessToken(consumerOrg, scopesToCollection(scopes));
-    }
-
-    public String getAccessTokenWithAudience(@NonNull String audience, @NonNull Collection<String> scopes) {
-        return getTokenForRequest(AccessTokenRequest.builder().scopes(new HashSet<>(scopes)).audience(audience).build());
-    }
-
-    public String getAccessTokenWithAudience(@NonNull String audience, String... scopes) {
-        return getAccessTokenWithAudience(audience, scopesToCollection(scopes));
+    public String getAccessToken(AccessTokenRequest request) {
+        return getTokenForRequest(request);
     }
 
     private String getTokenForRequest(@NonNull AccessTokenRequest accessTokenRequest) {
@@ -130,7 +109,7 @@ public class Maskinportenklient {
         final String audience = properties.getAudience();
         final String issuer = properties.getIssuer();
         final String claimScopes = String.join(" ", accessTokenRequest.getScopes());
-        final String consumerOrg = Optional.ofNullable(accessTokenRequest.consumerOrg).orElse(properties.getConsumerOrg());
+        final String consumerOrg = Optional.ofNullable(accessTokenRequest.getConsumerOrg()).orElse(properties.getConsumerOrg());
         log.debug("Signing JWTRequest with audience='{}',issuer='{}',scopes='{}',consumerOrg='{}', jtiId='{}'", audience, issuer, claimScopes, consumerOrg, jtiId);
         final JWTClaimsSet.Builder claimBuilder = new JWTClaimsSet.Builder()
                 .audience(audience)
@@ -140,7 +119,7 @@ public class Maskinportenklient {
                 .issueTime(new Date(issuedTimeInMillis))
                 .expirationTime(new Date(expirationTimeInMillis));
         Optional.ofNullable(consumerOrg).ifPresent(it -> claimBuilder.claim(CLAIM_CONSUMER_ORG, it));
-        Optional.ofNullable(accessTokenRequest.audience).ifPresent(it -> claimBuilder.claim(CLAIM_RESOURCE, it));
+        Optional.ofNullable(accessTokenRequest.getAudience()).ifPresent(it -> claimBuilder.claim(CLAIM_RESOURCE, it));
 
         final SignedJWT signedJWT = new SignedJWT(jwsHeader, claimBuilder
                 .build());
@@ -246,13 +225,5 @@ public class Maskinportenklient {
 
     private static Collection<String> scopesToCollection(String... scopes) {
         return Arrays.asList(String.join(" ", scopes).split("\\s"));
-    }
-
-    @Value
-    @Builder
-    private static class AccessTokenRequest {
-        @NonNull Set<String> scopes;
-        String consumerOrg;
-        String audience;
     }
 }

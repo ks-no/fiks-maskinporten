@@ -150,7 +150,7 @@ class MaskinportenklientTest {
                             )
             ).respond(callback().withCallbackClass(OidcMockExpectation.class));
             final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()));
-            final String accessToken = maskinportenklient.getAccessToken(SCOPE);
+            final String accessToken = maskinportenklient.getAccessToken(AccessTokenRequest.builder().scope(SCOPE).build());
             assertThat(accessToken).isNotBlank();
         }
     }
@@ -172,9 +172,9 @@ class MaskinportenklientTest {
                             ),
                     Times.exactly(1)).respond(callback().withCallbackClass(OidcMockExpectation.class));
             final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()));
-            final String accessToken = maskinportenklient.getAccessToken(SCOPE);
+            final String accessToken = maskinportenklient.getAccessToken(AccessTokenRequest.builder().scope(SCOPE).build());
             assertThat(accessToken).isNotBlank();
-            assertThat(maskinportenklient.getAccessToken(SCOPE)).isEqualTo(accessToken);
+            assertThat(maskinportenklient.getAccessToken(AccessTokenRequest.builder().scope(SCOPE).build())).isEqualTo(accessToken);
         }
     }
 
@@ -197,7 +197,7 @@ class MaskinportenklientTest {
                             .withBody("FAILURE WAS AN OPTION AFTER ALL")
                             .withStatusCode(HttpStatusCode.INTERNAL_SERVER_ERROR_500.code()));
             final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()));
-            final MaskinportenTokenRequestException exception = catchThrowableOfType(() -> maskinportenklient.getAccessToken(SCOPE), MaskinportenTokenRequestException.class);
+            final MaskinportenTokenRequestException exception = catchThrowableOfType(() -> maskinportenklient.getAccessToken(AccessTokenRequest.builder().scope(SCOPE).build()), MaskinportenTokenRequestException.class);
             assertThat(exception.getStatusCode()).isEqualTo(HttpStatusCode.INTERNAL_SERVER_ERROR_500.code());
         }
     }
@@ -211,7 +211,7 @@ class MaskinportenklientTest {
             localport = s.getLocalPort();
         }
         final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", localport));
-        final RuntimeException runtimeException = catchThrowableOfType(() -> maskinportenklient.getAccessToken(SCOPE), RuntimeException.class);
+        final RuntimeException runtimeException = catchThrowableOfType(() -> maskinportenklient.getAccessToken(AccessTokenRequest.builder().scope(SCOPE).build()), RuntimeException.class);
         assertThat(runtimeException.getCause()).isInstanceOf(HttpHostConnectException.class);
 
     }
@@ -234,7 +234,9 @@ class MaskinportenklientTest {
             ).respond(response().withStatusCode(HttpStatusCode.FORBIDDEN_403.code())
                     .withBody(maskinportenError));
             final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()));
-            MaskinportenClientTokenRequestException thrown = catchThrowableOfType(() -> maskinportenklient.getDelegatedAccessToken(consumerOrg, SCOPE), MaskinportenClientTokenRequestException.class);
+            MaskinportenClientTokenRequestException thrown = catchThrowableOfType(
+                    () -> maskinportenklient.getAccessToken(AccessTokenRequest.builder().consumerOrg(consumerOrg).scope(SCOPE).build()),
+                    MaskinportenClientTokenRequestException.class);
             assertThat(thrown.getMaskinportenError()).isEqualTo(maskinportenError);
             assertThat(thrown.getStatusCode()).isEqualTo(HttpStatusCode.FORBIDDEN_403.code());
         }
@@ -257,7 +259,7 @@ class MaskinportenklientTest {
                             )
             ).respond(callback().withCallbackClass(OidcMockExpectation.class));
             final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()));
-            final String accessToken = maskinportenklient.getDelegatedAccessToken(consumerOrg, SCOPE);
+            final String accessToken = maskinportenklient.getAccessToken(AccessTokenRequest.builder().consumerOrg(consumerOrg).scope(SCOPE).build());
             assertThat(accessToken).isNotBlank();
         }
     }
@@ -280,7 +282,7 @@ class MaskinportenklientTest {
             ).respond(callback().withCallbackClass(OidcMockExpectation.class));
             final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()));
 
-            final String accessToken = maskinportenklient.getAccessTokenWithAudience(audience, SCOPE);
+            final String accessToken = maskinportenklient.getAccessToken(AccessTokenRequest.builder().audience(audience).scope(SCOPE).build());
             assertThat(accessToken).isNotBlank();
             SignedJWT jwt = SignedJWT.parse(accessToken);
             assertThat(jwt.getJWTClaimsSet().getAudience()).isEqualTo(Collections.singletonList(audience));
