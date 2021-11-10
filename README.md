@@ -1,6 +1,6 @@
 # maskinporten-client
 ![GitHub License](https://img.shields.io/github/license/ks-no/fiks-maskinporten)
-[![Maven Central](https://img.shields.io/maven-central/v/no.ks.fiks/fiks-maskinporten)](https://search.maven.org/artifact/no.ks.fiks/fiks-maskinporten)
+[![Maven Central](https://img.shields.io/maven-central/v/no.ks.fiks/maskinporten)](https://search.maven.org/artifact/no.ks.fiks/maskinporten)
 ![GitHub Release Date](https://img.shields.io/github/release-date/ks-no/fiks-maskinporten.svg)
 ![GitHub Last Commit](https://img.shields.io/github/last-commit/ks-no/fiks-maskinporten.svg)
 
