@@ -6,9 +6,7 @@ import com.nimbusds.jose.util.Base64;
 import com.nimbusds.jose.util.JSONObjectUtils;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
-import lombok.Builder;
 import lombok.NonNull;
-import lombok.Value;
 import net.jodah.expiringmap.ExpirationPolicy;
 import net.jodah.expiringmap.ExpiringEntryLoader;
 import net.jodah.expiringmap.ExpiringMap;
@@ -91,29 +89,97 @@ public class Maskinportenklient {
         return Long.parseLong(value.toString());
     }
 
+    /**
+     * Henter access token med spesifiserte scopes fra Maskinporten.
+     *
+     * @deprecated Bruk {@link #getAccessToken(AccessTokenRequest)}
+     *
+     * @param scopes Forespurte scopes for access token
+     * @return Access token hentet fra Maskinporten
+     */
+    @Deprecated
     public String getAccessToken(@NonNull Collection<String> scopes) {
         return getTokenForRequest(AccessTokenRequest.builder().scopes(new HashSet<>(scopes)).build());
     }
 
+    /**
+     * Henter access token med spesifiserte scopes fra Maskinporten.
+     *
+     * @deprecated Bruk {@link #getAccessToken(AccessTokenRequest)}
+     *
+     * @param scopes Forespurte scopes for access token
+     * @return Access token hentet fra Maskinporten
+     */
+    @Deprecated
     public String getAccessToken(String... scopes) {
         return getAccessToken(scopesToCollection(scopes));
     }
 
+    /**
+     * Henter access token med spesifiserte scopes på vegne av en annen organisasjon fra Maskinporten.
+     * Bruk av dette krever at organisasjonen har delegert tilgangen i Altinn. Mer informasjon finnes på https://docs.digdir.no/maskinporten_func_delegering.html.
+     *
+     * @deprecated Bruk {@link #getAccessToken(AccessTokenRequest)}
+     *
+     * @param consumerOrg Organisasjonsnummer for organisasjon token skal hentes på vegne av
+     * @param scopes Forespurte scopes for access token
+     * @return Access token hentet fra Maskinporten
+     */
+    @Deprecated
     public String getDelegatedAccessToken(@NonNull String consumerOrg, @NonNull Collection<String> scopes) {
-
         return getTokenForRequest(AccessTokenRequest.builder().scopes(new HashSet<>(scopes)).consumerOrg(consumerOrg).build());
     }
 
+    /**
+     * Henter access token med spesifiserte scopes på vegne av en annen organisasjon fra Maskinporten.
+     * Bruk av dette krever at organisasjonen har delegert tilgangen i Altinn. Mer informasjon finnes på https://docs.digdir.no/maskinporten_func_delegering.html.
+     *
+     * @deprecated Bruk {@link #getAccessToken(AccessTokenRequest)}
+     *
+     * @param consumerOrg Organisasjonsnummer for organisasjon token skal hentes på vegne av
+     * @param scopes Forespurte scopes for access token
+     * @return Access token hentet fra Maskinporten
+     */
+    @Deprecated
     public String getDelegatedAccessToken(@NonNull String consumerOrg, String... scopes) {
         return getDelegatedAccessToken(consumerOrg, scopesToCollection(scopes));
     }
 
+    /**
+     * Henter access token med spesifiserte scopes og audience fra Maskinporten.
+     *
+     * @deprecated Bruk {@link #getAccessToken(AccessTokenRequest)}
+     *
+     * @param audience Ønsket audience for access token
+     * @param scopes Forespurte scopes for access token
+     * @return Access token hentet fra Maskinporten
+     */
+    @Deprecated
     public String getAccessTokenWithAudience(@NonNull String audience, @NonNull Collection<String> scopes) {
         return getTokenForRequest(AccessTokenRequest.builder().scopes(new HashSet<>(scopes)).audience(audience).build());
     }
 
+    /**
+     * Henter access token med spesifiserte scopes og audience fra Maskinporten.
+     *
+     * @deprecated Bruk {@link #getAccessToken(AccessTokenRequest)}
+     *
+     * @param audience Ønsket audience for access token
+     * @param scopes Forespurte scopes for access token
+     * @return Access token hentet fra Maskinporten
+     */
+    @Deprecated
     public String getAccessTokenWithAudience(@NonNull String audience, String... scopes) {
         return getAccessTokenWithAudience(audience, scopesToCollection(scopes));
+    }
+    /**
+     * Henter access token fra Maskinporten.
+     *
+     * @param request Request for access token
+     * @return Access token hentet fra Maskinporten
+     */
+    public String getAccessToken(@NonNull AccessTokenRequest request) {
+        return getTokenForRequest(request);
     }
 
     private String getTokenForRequest(@NonNull AccessTokenRequest accessTokenRequest) {
@@ -130,7 +196,7 @@ public class Maskinportenklient {
         final String audience = properties.getAudience();
         final String issuer = properties.getIssuer();
         final String claimScopes = String.join(" ", accessTokenRequest.getScopes());
-        final String consumerOrg = Optional.ofNullable(accessTokenRequest.consumerOrg).orElse(properties.getConsumerOrg());
+        final String consumerOrg = Optional.ofNullable(accessTokenRequest.getConsumerOrg()).orElse(properties.getConsumerOrg());
         log.debug("Signing JWTRequest with audience='{}',issuer='{}',scopes='{}',consumerOrg='{}', jtiId='{}'", audience, issuer, claimScopes, consumerOrg, jtiId);
         final JWTClaimsSet.Builder claimBuilder = new JWTClaimsSet.Builder()
                 .audience(audience)
@@ -140,7 +206,7 @@ public class Maskinportenklient {
                 .issueTime(new Date(issuedTimeInMillis))
                 .expirationTime(new Date(expirationTimeInMillis));
         Optional.ofNullable(consumerOrg).ifPresent(it -> claimBuilder.claim(CLAIM_CONSUMER_ORG, it));
-        Optional.ofNullable(accessTokenRequest.audience).ifPresent(it -> claimBuilder.claim(CLAIM_RESOURCE, it));
+        Optional.ofNullable(accessTokenRequest.getAudience()).ifPresent(it -> claimBuilder.claim(CLAIM_RESOURCE, it));
 
         final SignedJWT signedJWT = new SignedJWT(jwsHeader, claimBuilder
                 .build());
@@ -246,13 +312,5 @@ public class Maskinportenklient {
 
     private static Collection<String> scopesToCollection(String... scopes) {
         return Arrays.asList(String.join(" ", scopes).split("\\s"));
-    }
-
-    @Value
-    @Builder
-    private static class AccessTokenRequest {
-        @NonNull Set<String> scopes;
-        String consumerOrg;
-        String audience;
     }
 }
