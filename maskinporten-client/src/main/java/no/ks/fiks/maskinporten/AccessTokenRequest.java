@@ -20,6 +20,8 @@ public class AccessTokenRequest {
 
     /**
      * Organisasjonsnummer for organisasjon som token skal hentes på vegne av. Optional.
+     *
+     * Bruk av dette krever at organisasjonen har delegert tilgangen i Altinn. Mer informasjon finnes på https://docs.digdir.no/maskinporten_func_delegering.html.
      */
     String consumerOrg;
 

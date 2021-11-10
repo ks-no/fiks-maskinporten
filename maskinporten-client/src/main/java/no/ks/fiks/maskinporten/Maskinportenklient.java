@@ -117,6 +117,7 @@ public class Maskinportenklient {
 
     /**
      * Henter access token med spesifiserte scopes på vegne av en annen organisasjon fra Maskinporten.
+     * Bruk av dette krever at organisasjonen har delegert tilgangen i Altinn. Mer informasjon finnes på https://docs.digdir.no/maskinporten_func_delegering.html.
      *
      * @deprecated Bruk {@link #getAccessToken(AccessTokenRequest)}
      *
@@ -131,6 +132,7 @@ public class Maskinportenklient {
 
     /**
      * Henter access token med spesifiserte scopes på vegne av en annen organisasjon fra Maskinporten.
+     * Bruk av dette krever at organisasjonen har delegert tilgangen i Altinn. Mer informasjon finnes på https://docs.digdir.no/maskinporten_func_delegering.html.
      *
      * @deprecated Bruk {@link #getAccessToken(AccessTokenRequest)}
      *
