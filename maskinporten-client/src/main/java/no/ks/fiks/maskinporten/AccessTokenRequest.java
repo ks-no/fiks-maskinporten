@@ -11,10 +11,21 @@ import java.util.Set;
 @Builder
 public class AccessTokenRequest {
 
+    /**
+     * Ønskede scopes for access token. Required.
+     */
     @Singular
     @NonNull
     Set<String> scopes;
 
+    /**
+     * Organisasjonsnummer for organisasjon som token skal hentes på vegne av. Optional.
+     */
     String consumerOrg;
+
+
+    /**
+     * Ønsket audience for access token. Optional.
+     */
     String audience;
 }

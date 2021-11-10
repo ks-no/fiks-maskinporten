@@ -6,9 +6,7 @@ import com.nimbusds.jose.util.Base64;
 import com.nimbusds.jose.util.JSONObjectUtils;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
-import lombok.Builder;
 import lombok.NonNull;
-import lombok.Value;
 import net.jodah.expiringmap.ExpirationPolicy;
 import net.jodah.expiringmap.ExpiringEntryLoader;
 import net.jodah.expiringmap.ExpiringMap;
@@ -91,7 +89,94 @@ public class Maskinportenklient {
         return Long.parseLong(value.toString());
     }
 
-    public String getAccessToken(AccessTokenRequest request) {
+    /**
+     * Henter access token med spesifiserte scopes fra Maskinporten.
+     *
+     * @deprecated Bruk {@link #getAccessToken(AccessTokenRequest)}
+     *
+     * @param scopes Forespurte scopes for access token
+     * @return Access token hentet fra Maskinporten
+     */
+    @Deprecated
+    public String getAccessToken(@NonNull Collection<String> scopes) {
+        return getTokenForRequest(AccessTokenRequest.builder().scopes(new HashSet<>(scopes)).build());
+    }
+
+    /**
+     * Henter access token med spesifiserte scopes fra Maskinporten.
+     *
+     * @deprecated Bruk {@link #getAccessToken(AccessTokenRequest)}
+     *
+     * @param scopes Forespurte scopes for access token
+     * @return Access token hentet fra Maskinporten
+     */
+    @Deprecated
+    public String getAccessToken(String... scopes) {
+        return getAccessToken(scopesToCollection(scopes));
+    }
+
+    /**
+     * Henter access token med spesifiserte scopes på vegne av en annen organisasjon fra Maskinporten.
+     *
+     * @deprecated Bruk {@link #getAccessToken(AccessTokenRequest)}
+     *
+     * @param consumerOrg Organisasjonsnummer for organisasjon token skal hentes på vegne av
+     * @param scopes Forespurte scopes for access token
+     * @return Access token hentet fra Maskinporten
+     */
+    @Deprecated
+    public String getDelegatedAccessToken(@NonNull String consumerOrg, @NonNull Collection<String> scopes) {
+        return getTokenForRequest(AccessTokenRequest.builder().scopes(new HashSet<>(scopes)).consumerOrg(consumerOrg).build());
+    }
+
+    /**
+     * Henter access token med spesifiserte scopes på vegne av en annen organisasjon fra Maskinporten.
+     *
+     * @deprecated Bruk {@link #getAccessToken(AccessTokenRequest)}
+     *
+     * @param consumerOrg Organisasjonsnummer for organisasjon token skal hentes på vegne av
+     * @param scopes Forespurte scopes for access token
+     * @return Access token hentet fra Maskinporten
+     */
+    @Deprecated
+    public String getDelegatedAccessToken(@NonNull String consumerOrg, String... scopes) {
+        return getDelegatedAccessToken(consumerOrg, scopesToCollection(scopes));
+    }
+
+    /**
+     * Henter access token med spesifiserte scopes og audience fra Maskinporten.
+     *
+     * @deprecated Bruk {@link #getAccessToken(AccessTokenRequest)}
+     *
+     * @param audience Ønsket audience for access token
+     * @param scopes Forespurte scopes for access token
+     * @return Access token hentet fra Maskinporten
+     */
+    @Deprecated
+    public String getAccessTokenWithAudience(@NonNull String audience, @NonNull Collection<String> scopes) {
+        return getTokenForRequest(AccessTokenRequest.builder().scopes(new HashSet<>(scopes)).audience(audience).build());
+    }
+
+    /**
+     * Henter access token med spesifiserte scopes og audience fra Maskinporten.
+     *
+     * @deprecated Bruk {@link #getAccessToken(AccessTokenRequest)}
+     *
+     * @param audience Ønsket audience for access token
+     * @param scopes Forespurte scopes for access token
+     * @return Access token hentet fra Maskinporten
+     */
+    @Deprecated
+    public String getAccessTokenWithAudience(@NonNull String audience, String... scopes) {
+        return getAccessTokenWithAudience(audience, scopesToCollection(scopes));
+    }
+    /**
+     * Henter access token fra Maskinporten.
+     *
+     * @param request Request for access token
+     * @return Access token hentet fra Maskinporten
+     */
+    public String getAccessToken(@NonNull AccessTokenRequest request) {
         return getTokenForRequest(request);
     }
 
