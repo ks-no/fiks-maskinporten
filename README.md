@@ -43,8 +43,8 @@ public class Application {
         Maskinportenklient maskinporten = new Maskinportenklient(keyStore, "authentication certificate", keyStorePassword, MaskinportenklientProperties.builder()
                 .numberOfSecondsLeftBeforeExpire(10)
                 .issuer("<klient-id-utdelt-av-difi>")
-                .audience("https://oidc-ver2.difi.no/idporten-oidc-provider/")
-                .tokenEndpoint("https://oidc-ver2.difi.no/idporten-oidc-provider/token")
+                .audience("https://ver2.maskinporten.no/")
+                .tokenEndpoint("https://ver2.maskinporten.no/token")
                 .build());
 
         String accessToken = maskinporten.getAccessToken("ks:fiks");
@@ -59,6 +59,9 @@ public class Application {
 
 }
 ```
+Digdir vedlikeholder [liste med gyldige verdier for de miljøene de tilbyr](https://docs.digdir.no/maskinporten_func_wellknown.html)
+
+
 # maskinporten-spring-boot-client
 Autokonfigurasjon av maskinporten for Spring Boot.
 
