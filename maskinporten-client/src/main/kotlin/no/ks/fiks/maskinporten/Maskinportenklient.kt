@@ -14,6 +14,8 @@ import net.jodah.expiringmap.ExpiringValue
 import no.ks.fiks.maskinporten.AccessTokenRequest.Companion.builder
 import no.ks.fiks.maskinporten.error.MaskinportenClientTokenRequestException
 import no.ks.fiks.maskinporten.error.MaskinportenTokenRequestException
+import org.apache.hc.client5.http.config.RequestConfig
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder
 import org.apache.hc.core5.http.*
 import org.apache.hc.core5.http.io.HttpClientResponseHandler
@@ -29,9 +31,8 @@ import java.security.cert.X509Certificate
 import java.text.ParseException
 import java.util.*
 import java.util.concurrent.TimeUnit
-import java.util.stream.Collectors
 
-private val log = mu.KotlinLogging.logger {  }
+private val log = mu.KotlinLogging.logger { }
 
 private fun scopesToCollection(vararg scopes: String): Collection<String> {
     return scopes.toList()
@@ -62,12 +63,21 @@ class Maskinportenklient(privateKey: PrivateKey, certificate: X509Certificate, p
         map = ExpiringMap.builder()
             .variableExpiration()
             .expiringEntryLoader(ExpiringEntryLoader { tokenRequest: AccessTokenRequest ->
-                val json = parse(doAcquireAccessToken(tokenRequest) ?: throw IllegalArgumentException("Got empty response from provider for request $tokenRequest"))
+                val json = parse(
+                    doAcquireAccessToken(tokenRequest)
+                        ?: throw IllegalArgumentException("Got empty response from provider for request $tokenRequest")
+                )
                 val accessToken = parseAccessToken(json)
                 val expiresIn = getExpiresIn(json)
                 val duration = expiresIn - properties.numberOfSecondsLeftBeforeExpire
                 val exp = TimeUnit.MILLISECONDS.convert(getExp(accessToken), TimeUnit.SECONDS)
-                log.info { "Adding access token to cache; access_token.scopes: '${json[CLAIM_SCOPE]}', access_token.exp: ${Date(exp)}, expires_in: $expiresIn seconds. Expires from cache in $duration seconds (${Date(System.currentTimeMillis() + 1000 * duration)})." }
+                log.info {
+                    "Adding access token to cache; access_token.scopes: '${json[CLAIM_SCOPE]}', access_token.exp: ${Date(exp)}, expires_in: $expiresIn seconds. Expires from cache in $duration seconds (${
+                        Date(
+                            System.currentTimeMillis() + 1000 * duration
+                        )
+                    })."
+                }
                 ExpiringValue(json["access_token"].toString(), ExpirationPolicy.CREATED, duration, TimeUnit.SECONDS)
             } as ExpiringEntryLoader<AccessTokenRequest, String>)
             .build()
@@ -165,44 +175,52 @@ class Maskinportenklient(privateKey: PrivateKey, certificate: X509Certificate, p
             val tokenEndpointUrlString = properties.tokenEndpoint
             log.debug { """Acquiring access token from "$tokenEndpointUrlString"""" }
             val startTime = System.currentTimeMillis()
-            HttpClientBuilder.create()
-                .disableAutomaticRetries()
-                .disableRedirectHandling()
-                .disableAuthCaching()
-                .build().use { httpClient ->
-                    return httpClient.execute(createHttpRequest(postData), object : HttpClientResponseHandler<String?> {
-                        @Throws(IOException::class)
-                        override fun handleResponse(classicHttpResponse: ClassicHttpResponse): String? {
-                            val responseCode = classicHttpResponse.code
-                            log.debug { "Access token response received in ${System.currentTimeMillis() - startTime} ms with status $responseCode" }
-                            return if (HttpStatus.SC_OK == responseCode) {
-                                classicHttpResponse.entity.content?.use { contentStream -> toString(contentStream) }
+            return actuallyExecuteRequest { httpClient ->
+                httpClient.execute(createHttpRequest(postData), object : HttpClientResponseHandler<String?> {
+                    override fun handleResponse(classicHttpResponse: ClassicHttpResponse): String? {
+                        val responseCode = classicHttpResponse.code
+                        log.debug { "Access token response received in ${System.currentTimeMillis() - startTime} ms with status $responseCode" }
+                        return if (HttpStatus.SC_OK == responseCode) {
+                            classicHttpResponse.entity.content?.use { contentStream -> contentStream.readCompletelyAsString() }
+                        } else {
+                            val errorFromMaskinporten: String = classicHttpResponse.entity.content.use { errorContentStream ->
+                                errorContentStream.readCompletelyAsString()
+                            }
+                            log.warn { "Failed to get token: $errorFromMaskinporten" }
+                            val exceptionMessage = "Http response code: $responseCode, url: '$tokenEndpointUrlString', message: '$errorFromMaskinporten'"
+                            if (responseCode >= HttpStatus.SC_BAD_REQUEST && responseCode < HttpStatus.SC_INTERNAL_SERVER_ERROR) {
+                                throw MaskinportenClientTokenRequestException(exceptionMessage, responseCode, errorFromMaskinporten)
                             } else {
-                                val errorFromMaskinporten: String = classicHttpResponse.entity.content.use { errorContentStream ->
-                                    toString(errorContentStream)
-                                }
-                                log.warn { "Failed to get token: $errorFromMaskinporten" }
-                                val exceptionMessage = "Http response code: $responseCode, url: '$tokenEndpointUrlString', scopes: '$accessTokenRequest', message: '$errorFromMaskinporten'"
-                                if (responseCode >= HttpStatus.SC_BAD_REQUEST && responseCode < HttpStatus.SC_INTERNAL_SERVER_ERROR) {
-                                    throw MaskinportenClientTokenRequestException(exceptionMessage, responseCode, errorFromMaskinporten)
-                                } else {
-                                    throw MaskinportenTokenRequestException(exceptionMessage, responseCode, errorFromMaskinporten)
-                                }
+                                throw MaskinportenTokenRequestException(exceptionMessage, responseCode, errorFromMaskinporten)
                             }
                         }
+                    }
 
-                        @Throws(IOException::class)
-                        private fun toString(inputStream: InputStream): String {
-                            InputStreamReader(inputStream).use { isr ->
-                                BufferedReader(isr).use { br ->
-                                    return br.lines().collect(Collectors.joining("\n"))
-                                }
-                            }
+                    @Throws(IOException::class)
+                    private fun InputStream.readCompletelyAsString() = InputStreamReader(this).use { isr ->
+                        BufferedReader(isr).use { br ->
+                            br.lineSequence().joinToString("\n")
                         }
-                    })
-                }
+                    }
+
+                })
+            }
         }
     }
+
+    private fun actuallyExecuteRequest(httpRequestResponse: (CloseableHttpClient) -> String?): String? =
+        properties.providedHttpClient?.let { httpClient ->
+            log.debug { "Executing request using provided httpClient" }
+            httpRequestResponse(httpClient)
+        } ?: HttpClientBuilder.create()
+            .disableAutomaticRetries()
+            .disableRedirectHandling()
+            .disableAuthCaching()
+            .setDefaultRequestConfig(RequestConfig.custom().setConnectionRequestTimeout(properties.timeoutMillis.toLong(), TimeUnit.MILLISECONDS).build())
+            .build().use {
+                httpRequestResponse(it)
+            }
+
 
     private fun createHttpRequest(entityBuffer: ByteArray): ClassicHttpRequest {
         return ClassicRequestBuilder.post(properties.tokenEndpoint)

@@ -22,6 +22,8 @@ import no.ks.fiks.virksomhetsertifikat.SertifikatType;
 import no.ks.fiks.virksomhetsertifikat.VirksomhetSertifikater;
 import no.ks.fiks.virksomhetsertifikat.VirksomhetSertifikaterProperties;
 import org.apache.hc.client5.http.HttpHostConnectException;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.apache.hc.core5.http.NameValuePair;
 import org.apache.hc.core5.net.URLEncodedUtils;
 import org.junit.jupiter.api.DisplayName;
@@ -47,8 +49,7 @@ import java.text.ParseException;
 import java.time.Clock;
 import java.util.*;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.catchThrowableOfType;
+import static org.assertj.core.api.Assertions.*;
 import static org.mockserver.model.HttpClassCallback.callback;
 import static org.mockserver.model.HttpRequest.request;
 import static org.mockserver.model.HttpResponse.response;
@@ -151,6 +152,35 @@ class MaskinportenklientTest {
             final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()));
             final String accessToken = maskinportenklient.getAccessToken(SCOPE);
             assertThat(accessToken).isNotBlank();
+        }
+    }
+
+    @DisplayName("Generate access token, but using provided http client")
+    @Test
+    void getAccessTokenUsingProvidedHttpClient() {
+        try (final ClientAndServer client = ClientAndServer.startClientAndServer()) {
+            client.when(
+                    request()
+                            .withSecure(false)
+                            .withMethod(HttpMethod.POST.name())
+                            .withPath("/token")
+                            .withBody(
+                                    params(
+                                            param("grant_type", Maskinportenklient.GRANT_TYPE)
+                                    )
+                            )
+            ).respond(callback().withCallbackClass(OidcMockExpectation.class));
+
+            try(CloseableHttpClient httpClient = HttpClientBuilder.create().disableAutomaticRetries().disableRedirectHandling().disableAuthCaching().build()) {
+                final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()), httpClient);
+                assertThat(maskinportenklient.getAccessToken(SCOPE)).isNotBlank();
+                // httpClient should not be closed yet, have another go
+                assertThat(maskinportenklient.getAccessToken(SCOPE)).isNotBlank();
+
+            } catch (IOException e) {
+                fail("Could not get token using provided client", e);
+            }
+
         }
     }
 
@@ -287,22 +317,36 @@ class MaskinportenklientTest {
     }
 
     private Maskinportenklient createClient(final String tokenEndpoint) {
-        final VirksomhetSertifikater virksomhetSertifikater = createVirksomhetSertifikater();
-        VirksomhetSertifikater.KsVirksomhetSertifikatStore authKeyStore = virksomhetSertifikater.requireAuthKeyStore();
-
-        final MaskinportenklientProperties maskinportenklientProperties = MaskinportenklientProperties.builder().audience("https://ver2.maskinporten.no/")
+        return createMaskinportenklient(createVirksomhetSertifikater().requireAuthKeyStore(), MaskinportenklientProperties.builder()
+                .audience("https://ver2.maskinporten.no/")
                 .tokenEndpoint(tokenEndpoint)
                 .issuer("77c0a0ba-d20d-424c-b5dd-f1c63da07fc4")
                 .numberOfSecondsLeftBeforeExpire(10)
                 .timeoutMillis(1000)
-                .build();
+                .build());
+    }
+
+    private Maskinportenklient createClient(final String tokenEndpoint, final CloseableHttpClient client) {
+
+        return createMaskinportenklient(createVirksomhetSertifikater().requireAuthKeyStore(), MaskinportenklientProperties.builder()
+                .audience("https://ver2.maskinporten.no/")
+                .tokenEndpoint(tokenEndpoint)
+                .issuer("77c0a0ba-d20d-424c-b5dd-f1c63da07fc4")
+                .numberOfSecondsLeftBeforeExpire(10)
+                .timeoutMillis(1000)
+                .providedHttpClient(client)
+                .build());
+
+    }
+
+    private Maskinportenklient createMaskinportenklient(final VirksomhetSertifikater.KsVirksomhetSertifikatStore authKeyStore, final MaskinportenklientProperties maskinportenklientProperties) {
         try {
             return new Maskinportenklient(authKeyStore.getPrivateKey(), authKeyStore.getCertificate(), maskinportenklientProperties);
         } catch (Exception e) {
             throw new IllegalStateException("Feil under lesing av keystore", e);
         }
-
     }
+
 
     private VirksomhetSertifikater createVirksomhetSertifikater() {
         final VirksomhetSertifikaterProperties properties = new VirksomhetSertifikaterProperties();

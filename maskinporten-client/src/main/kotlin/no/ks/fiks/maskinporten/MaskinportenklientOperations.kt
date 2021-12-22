@@ -82,4 +82,5 @@ interface MaskinportenklientOperations {
      * @return Access token hentet fra Maskinporten
      */
     fun getAccessToken(request: AccessTokenRequest): String?
+
 }
