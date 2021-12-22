@@ -8,7 +8,7 @@ interface MaskinportenklientOperations {
      * @return Access token hentet fra Maskinporten
      */
     @Deprecated(
-        "Bruk {@link #getAccessToken(AccessTokenRequest)}\n     \n      "
+        "Bruk {@link #getAccessToken(AccessTokenRequest)}"
     )
     fun getAccessToken(scopes: Collection<String>): String?
 
