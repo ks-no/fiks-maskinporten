@@ -96,11 +96,16 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <executions>
                     <execution>
+                        <id>default-compile</id>
+                        <phase>none</phase>
+                    </execution>
+                    <execution>
                         <id>testCompile</id>
                         <phase>test-compile</phase>
                         <goals>
                             <goal>testCompile</goal>
                         </goals>
+
                     </execution>
                 </executions>
             </plugin>
