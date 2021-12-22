@@ -61,7 +61,7 @@ public class Application {
 }
 ```
 ### Bruk egen CloseableHttpClient
-Klienten er basert på Apache HttpClient 5.1.x. Dersom du vil kan du konfigurere denne selv kan du gjøre det. Da må du selv sørge for å lukke den når klienten ikke skal brukes mer
+Klienten er basert på Apache HttpClient 5.1.x. Dersom du vil kan du konfigurere denne selv. Da må du selv sørge for å lukke den når klienten ikke skal brukes mer
 ```java
 CloseableHttpClient httpClient = ... // 
 Maskinportenklient klient = new Maskinportenklient(keyStore, "authentication certificate", keyStorePassword, MaskinportenklientProperties.builder()
