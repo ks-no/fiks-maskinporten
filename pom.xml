@@ -155,11 +155,6 @@
                             <goals>
                                 <goal>compile</goal>
                             </goals>
-                            <configuration>
-                                <sourceDirs>
-                                    <source>src/main/kotlin</source>
-                                </sourceDirs>
-                            </configuration>
                         </execution>
                         <execution>
                             <id>test-compile</id>
