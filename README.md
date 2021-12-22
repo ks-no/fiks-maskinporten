@@ -60,6 +60,19 @@ public class Application {
 
 }
 ```
+### Bruk egen CloseableHttpClient
+Klienten er basert på Apache HttpClient 5.1.x. Dersom du vil kan du konfigurere denne selv kan du gjøre det. Da må du selv sørge for å lukke den når klienten ikke skal brukes mer
+```java
+CloseableHttpClient httpClient = ... // 
+Maskinportenklient klient = new Maskinportenklient(keyStore, "authentication certificate", keyStorePassword, MaskinportenklientProperties.builder()
+                .audience("https://ver2.maskinporten.no/")
+                .tokenEndpoint(tokenEndpoint)
+                .issuer("77c0a0ba-d20d-424c-b5dd-f1c63da07fc4")
+                .numberOfSecondsLeftBeforeExpire(10)
+                .providedHttpClient(httpClient)
+                .build())        
+```
+
 ### Kotlin
 ```kotlin
 val keyStore: Keystore = ...
