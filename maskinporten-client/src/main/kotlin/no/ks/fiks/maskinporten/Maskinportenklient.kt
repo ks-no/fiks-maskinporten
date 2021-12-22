@@ -1,316 +1,320 @@
-package no.ks.fiks.maskinporten;
+package no.ks.fiks.maskinporten
 
-import com.nimbusds.jose.*;
-import com.nimbusds.jose.crypto.RSASSASigner;
-import com.nimbusds.jose.util.Base64;
-import com.nimbusds.jose.util.JSONObjectUtils;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
-import lombok.NonNull;
-import net.jodah.expiringmap.ExpirationPolicy;
-import net.jodah.expiringmap.ExpiringEntryLoader;
-import net.jodah.expiringmap.ExpiringMap;
-import net.jodah.expiringmap.ExpiringValue;
-import no.ks.fiks.maskinporten.error.MaskinportenClientTokenRequestException;
-import no.ks.fiks.maskinporten.error.MaskinportenTokenRequestException;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
-import org.apache.hc.core5.http.*;
-import org.apache.hc.core5.http.io.HttpClientResponseHandler;
-import org.apache.hc.core5.http.io.support.ClassicRequestBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
+import com.nimbusds.jose.*
+import com.nimbusds.jose.crypto.RSASSASigner
+import com.nimbusds.jose.util.Base64
+import com.nimbusds.jose.util.JSONObjectUtils
+import com.nimbusds.jwt.JWTClaimsSet
+import com.nimbusds.jwt.SignedJWT
+import mu.withLoggingContext
+import net.jodah.expiringmap.ExpirationPolicy
+import net.jodah.expiringmap.ExpiringEntryLoader
+import net.jodah.expiringmap.ExpiringMap
+import net.jodah.expiringmap.ExpiringValue
+import no.ks.fiks.maskinporten.AccessTokenRequest.Companion.builder
+import no.ks.fiks.maskinporten.error.MaskinportenClientTokenRequestException
+import no.ks.fiks.maskinporten.error.MaskinportenTokenRequestException
+import org.apache.hc.client5.http.impl.classic.HttpClientBuilder
+import org.apache.hc.core5.http.*
+import org.apache.hc.core5.http.io.HttpClientResponseHandler
+import org.apache.hc.core5.http.io.support.ClassicRequestBuilder
+import java.io.BufferedReader
+import java.io.IOException
+import java.io.InputStream
+import java.io.InputStreamReader
+import java.nio.charset.StandardCharsets
+import java.security.KeyStore
+import java.security.PrivateKey
+import java.security.cert.X509Certificate
+import java.text.ParseException
+import java.util.*
+import java.util.concurrent.TimeUnit
+import java.util.stream.Collectors
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
-import java.security.*;
-import java.security.cert.CertificateEncodingException;
-import java.security.cert.X509Certificate;
-import java.text.ParseException;
-import java.util.*;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
+private val log = mu.KotlinLogging.logger {  }
 
-import static java.util.Collections.singletonList;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static java.util.concurrent.TimeUnit.MINUTES;
+private fun scopesToCollection(vararg scopes: String): Collection<String> {
+    return scopes.toList()
+}
 
-public class Maskinportenklient {
+class Maskinportenklient(privateKey: PrivateKey, certificate: X509Certificate, private val properties: MaskinportenklientProperties) :
+    MaskinportenklientOperations {
+    private val jwsHeader: JWSHeader
+    private val signer: JWSSigner
+    private val map: ExpiringMap<AccessTokenRequest, String>
 
-    private static final Logger log = LoggerFactory.getLogger(Maskinportenklient.class);
+    constructor(
+        keyStore: KeyStore,
+        privateKeyAlias: String?,
+        privateKeyPassword: CharArray?,
+        properties: MaskinportenklientProperties
+    ) : this(
+        keyStore.getKey(privateKeyAlias, privateKeyPassword) as PrivateKey,
+        keyStore.getCertificate(privateKeyAlias) as X509Certificate,
+        properties
+    )
 
-    static final String GRANT_TYPE = "urn:ietf:params:oauth:grant-type:jwt-bearer";
-    static final String CLAIM_SCOPE = "scope";
-    static final String CLAIM_CONSUMER_ORG = "consumer_org";
-    static final String CLAIM_RESOURCE = "resource";
-    static final String MDC_JTIID = "jtiId";
-
-    private final MaskinportenklientProperties properties;
-    private final JWSHeader jwsHeader;
-    private final JWSSigner signer;
-    private final ExpiringMap<AccessTokenRequest, String> map;
-
-    public Maskinportenklient(@NonNull KeyStore keyStore, String privateKeyAlias, char[] privateKeyPassword, @NonNull MaskinportenklientProperties properties) throws KeyStoreException, CertificateEncodingException, UnrecoverableKeyException, NoSuchAlgorithmException {
-        this((PrivateKey) keyStore.getKey(privateKeyAlias, privateKeyPassword), (X509Certificate) keyStore.getCertificate(privateKeyAlias), properties);
-    }
-
-    public Maskinportenklient(@NonNull PrivateKey privateKey, X509Certificate certificate, @NonNull MaskinportenklientProperties properties) throws CertificateEncodingException {
-        this.properties = properties;
-        jwsHeader = new JWSHeader.Builder(JWSAlgorithm.RS256)
-                .x509CertChain(singletonList(Base64.encode(certificate.getEncoded())))
-                .build();
-        signer = new RSASSASigner(privateKey);
-
+    init {
+        jwsHeader = JWSHeader.Builder(JWSAlgorithm.RS256)
+            .x509CertChain(listOf(Base64.encode(certificate.encoded)))
+            .build()
+        signer = RSASSASigner(privateKey)
         map = ExpiringMap.builder()
-                .variableExpiration()
-                .expiringEntryLoader((ExpiringEntryLoader<AccessTokenRequest, String>) tokenRequest -> {
-                    final Map<String, Object> json = parse(doAcquireAccessToken(tokenRequest));
-                    final Map<String, Object> accessToken = parseAccessToken(json);
-                    final long expiresIn = getExpiresIn(json);
-                    final long duration = expiresIn - properties.getNumberOfSecondsLeftBeforeExpire();
-                    long exp = TimeUnit.MILLISECONDS.convert(getExp(accessToken), TimeUnit.SECONDS);
-                    log.info("Adding access token to cache; access_token.scopes: '{}', access_token.exp: {}, expires_in: {} seconds. Expires from cache in {} seconds ({}).", json.get(CLAIM_SCOPE), new Date(exp), expiresIn, duration, new Date(System.currentTimeMillis() + (1000 * duration)));
-                    return new ExpiringValue<>(json.get("access_token").toString(), ExpirationPolicy.CREATED, duration, TimeUnit.SECONDS);
-                })
-                .build();
+            .variableExpiration()
+            .expiringEntryLoader(ExpiringEntryLoader { tokenRequest: AccessTokenRequest ->
+                val json = parse(doAcquireAccessToken(tokenRequest) ?: throw IllegalArgumentException("Got empty response from provider for request $tokenRequest"))
+                val accessToken = parseAccessToken(json)
+                val expiresIn = getExpiresIn(json)
+                val duration = expiresIn - properties.numberOfSecondsLeftBeforeExpire
+                val exp = TimeUnit.MILLISECONDS.convert(getExp(accessToken), TimeUnit.SECONDS)
+                log.info { "Adding access token to cache; access_token.scopes: '${json[CLAIM_SCOPE]}', access_token.exp: ${Date(exp)}, expires_in: $expiresIn seconds. Expires from cache in $duration seconds (${Date(System.currentTimeMillis() + 1000 * duration)})." }
+                ExpiringValue(json["access_token"].toString(), ExpirationPolicy.CREATED, duration, TimeUnit.SECONDS)
+            } as ExpiringEntryLoader<AccessTokenRequest, String>)
+            .build()
     }
 
-    private long getExpiresIn(Map<String, Object> json) {
-        Object value = Objects.requireNonNull(json.get("expires_in"), "JSON response fra Maskinporten mangler felt 'expires_in'");
-        return Long.parseLong(value.toString());
+    private fun getExpiresIn(json: Map<String, Any>): Long {
+        val value = Objects.requireNonNull(json["expires_in"], "JSON response fra Maskinporten mangler felt 'expires_in'")
+        return value.toString().toLong()
     }
 
-    private long getExp(Map<String, Object> accessToken) {
-        Object value = Objects.requireNonNull(accessToken.get("exp"), "Access token fra Maskinporten mangler felt 'exp'");
-        return Long.parseLong(value.toString());
-    }
-
-    /**
-     * Henter access token med spesifiserte scopes fra Maskinporten.
-     *
-     * @deprecated Bruk {@link #getAccessToken(AccessTokenRequest)}
-     *
-     * @param scopes Forespurte scopes for access token
-     * @return Access token hentet fra Maskinporten
-     */
-    @Deprecated
-    public String getAccessToken(@NonNull Collection<String> scopes) {
-        return getTokenForRequest(AccessTokenRequest.builder().scopes(new HashSet<>(scopes)).build());
+    private fun getExp(accessToken: Map<String, Any>): Long {
+        val value = Objects.requireNonNull(accessToken["exp"], "Access token fra Maskinporten mangler felt 'exp'")
+        return value.toString().toLong()
     }
 
     /**
      * Henter access token med spesifiserte scopes fra Maskinporten.
      *
-     * @deprecated Bruk {@link #getAccessToken(AccessTokenRequest)}
+     * @param scopes Forespurte scopes for access token
+     * @return Access token hentet fra Maskinporten
+     */
+    @Deprecated(
+        """Bruk {@link #getAccessToken(AccessTokenRequest)}
+     
+      """
+    )
+    override fun getAccessToken(scopes: Collection<String>): String? {
+        return getTokenForRequest(builder().scopes(HashSet(scopes)).build())
+    }
+
+    /**
+     * Henter access token med spesifiserte scopes fra Maskinporten.
      *
      * @param scopes Forespurte scopes for access token
      * @return Access token hentet fra Maskinporten
      */
-    @Deprecated
-    public String getAccessToken(String... scopes) {
-        return getAccessToken(scopesToCollection(scopes));
+    @Deprecated(
+        """Bruk {@link #getAccessToken(AccessTokenRequest)}
+     
+      """
+    )
+    override fun getAccessToken(vararg scopes: String): String? {
+        return getAccessToken(scopesToCollection(*scopes))
     }
 
     /**
      * Henter access token med spesifiserte scopes på vegne av en annen organisasjon fra Maskinporten.
      * Bruk av dette krever at organisasjonen har delegert tilgangen i Altinn. Mer informasjon finnes på https://docs.digdir.no/maskinporten_func_delegering.html.
      *
-     * @deprecated Bruk {@link #getAccessToken(AccessTokenRequest)}
-     *
      * @param consumerOrg Organisasjonsnummer for organisasjon token skal hentes på vegne av
      * @param scopes Forespurte scopes for access token
      * @return Access token hentet fra Maskinporten
      */
-    @Deprecated
-    public String getDelegatedAccessToken(@NonNull String consumerOrg, @NonNull Collection<String> scopes) {
-        return getTokenForRequest(AccessTokenRequest.builder().scopes(new HashSet<>(scopes)).consumerOrg(consumerOrg).build());
+    @Deprecated(
+        """Bruk {@link #getAccessToken(AccessTokenRequest)}
+     
+      """
+    )
+    override fun getDelegatedAccessToken(consumerOrg: String, scopes: Collection<String>): String? {
+        return getTokenForRequest(builder().scopes(HashSet(scopes)).consumerOrg(consumerOrg).build())
     }
 
     /**
      * Henter access token med spesifiserte scopes på vegne av en annen organisasjon fra Maskinporten.
      * Bruk av dette krever at organisasjonen har delegert tilgangen i Altinn. Mer informasjon finnes på https://docs.digdir.no/maskinporten_func_delegering.html.
      *
-     * @deprecated Bruk {@link #getAccessToken(AccessTokenRequest)}
-     *
      * @param consumerOrg Organisasjonsnummer for organisasjon token skal hentes på vegne av
      * @param scopes Forespurte scopes for access token
      * @return Access token hentet fra Maskinporten
      */
-    @Deprecated
-    public String getDelegatedAccessToken(@NonNull String consumerOrg, String... scopes) {
-        return getDelegatedAccessToken(consumerOrg, scopesToCollection(scopes));
+    @Deprecated(
+        """Bruk {@link #getAccessToken(AccessTokenRequest)}
+     
+      """
+    )
+    override fun getDelegatedAccessToken(consumerOrg: String, vararg scopes: String): String? {
+        return getDelegatedAccessToken(consumerOrg, scopesToCollection(*scopes))
     }
 
     /**
      * Henter access token med spesifiserte scopes og audience fra Maskinporten.
      *
-     * @deprecated Bruk {@link #getAccessToken(AccessTokenRequest)}
-     *
      * @param audience Ønsket audience for access token
      * @param scopes Forespurte scopes for access token
      * @return Access token hentet fra Maskinporten
      */
-    @Deprecated
-    public String getAccessTokenWithAudience(@NonNull String audience, @NonNull Collection<String> scopes) {
-        return getTokenForRequest(AccessTokenRequest.builder().scopes(new HashSet<>(scopes)).audience(audience).build());
+    @Deprecated(
+        """Bruk {@link #getAccessToken(AccessTokenRequest)}
+     
+      """
+    )
+    override fun getAccessTokenWithAudience(audience: String, scopes: Collection<String>): String? {
+        return getTokenForRequest(builder().scopes(HashSet(scopes)).audience(audience).build())
     }
 
     /**
      * Henter access token med spesifiserte scopes og audience fra Maskinporten.
      *
-     * @deprecated Bruk {@link #getAccessToken(AccessTokenRequest)}
-     *
      * @param audience Ønsket audience for access token
      * @param scopes Forespurte scopes for access token
      * @return Access token hentet fra Maskinporten
      */
-    @Deprecated
-    public String getAccessTokenWithAudience(@NonNull String audience, String... scopes) {
-        return getAccessTokenWithAudience(audience, scopesToCollection(scopes));
+    @Deprecated(
+        """Bruk {@link #getAccessToken(AccessTokenRequest)}
+     
+      """
+    )
+    override fun getAccessTokenWithAudience(audience: String, vararg scopes: String): String? {
+        return getAccessTokenWithAudience(audience, scopesToCollection(*scopes))
     }
+
     /**
      * Henter access token fra Maskinporten.
      *
      * @param request Request for access token
      * @return Access token hentet fra Maskinporten
      */
-    public String getAccessToken(@NonNull AccessTokenRequest request) {
-        return getTokenForRequest(request);
+    override fun getAccessToken(request: AccessTokenRequest): String? {
+        return getTokenForRequest(request)
     }
 
-    private String getTokenForRequest(@NonNull AccessTokenRequest accessTokenRequest) {
-        if (accessTokenRequest.getScopes().isEmpty()) {
-            throw new IllegalArgumentException("Minst ett scope må oppgies");
+    private fun getTokenForRequest(accessTokenRequest: AccessTokenRequest): String? {
+        require(accessTokenRequest.scopes.isNotEmpty()) { "Minst ett scope må oppgies" }
+        return map[accessTokenRequest]
+    }
+
+    @Throws(JOSEException::class)
+    private fun createJwtRequestForAccessToken(accessTokenRequest: AccessTokenRequest, jtiId: String?): String {
+        val issuedTimeInMillis = System.currentTimeMillis()
+        val expirationTimeInMillis = issuedTimeInMillis + TimeUnit.MILLISECONDS.convert(2, TimeUnit.MINUTES)
+        val audience = properties.audience
+        val issuer = properties.issuer
+        val claimScopes = accessTokenRequest.scopes.joinToString(" ")
+        val consumerOrg = accessTokenRequest.consumerOrg ?: properties.consumerOrg
+        log.debug { "Signing JWTRequest with audience='$audience',issuer='$issuer',scopes='$claimScopes',consumerOrg='$consumerOrg', jtiId='$jtiId'" }
+        val claimBuilder = JWTClaimsSet.Builder()
+            .audience(audience)
+            .issuer(issuer)
+            .claim(CLAIM_SCOPE, claimScopes)
+            .jwtID(jtiId)
+            .issueTime(Date(issuedTimeInMillis))
+            .expirationTime(Date(expirationTimeInMillis))
+        consumerOrg?.run { claimBuilder.claim(CLAIM_CONSUMER_ORG, this) }
+        accessTokenRequest.audience?.run { claimBuilder.claim(CLAIM_RESOURCE, this) }
+        val signedJWT = SignedJWT(
+            jwsHeader, claimBuilder
+                .build()
+        )
+        signedJWT.sign(signer)
+        return signedJWT.serialize()
+    }
+
+    private fun doAcquireAccessToken(accessTokenRequest: AccessTokenRequest): String? {
+        return try {
+            acquireAccessToken(accessTokenRequest)
+        } catch (e: JOSEException) {
+            log.error(e) { "Could not acquire access token due to an exception" }
+            throw RuntimeException(e)
+        } catch (e: IOException) {
+            log.error(e) { "Could not acquire access token due to an exception" }
+            throw RuntimeException(e)
         }
-        return map.get(accessTokenRequest);
     }
 
-    protected String createJwtRequestForAccessToken(AccessTokenRequest accessTokenRequest, String jtiId) throws JOSEException {
-        final long issuedTimeInMillis = System.currentTimeMillis();
-        final long expirationTimeInMillis = issuedTimeInMillis + MILLISECONDS.convert(2, MINUTES);
-
-        final String audience = properties.getAudience();
-        final String issuer = properties.getIssuer();
-        final String claimScopes = String.join(" ", accessTokenRequest.getScopes());
-        final String consumerOrg = Optional.ofNullable(accessTokenRequest.getConsumerOrg()).orElse(properties.getConsumerOrg());
-        log.debug("Signing JWTRequest with audience='{}',issuer='{}',scopes='{}',consumerOrg='{}', jtiId='{}'", audience, issuer, claimScopes, consumerOrg, jtiId);
-        final JWTClaimsSet.Builder claimBuilder = new JWTClaimsSet.Builder()
-                .audience(audience)
-                .issuer(issuer)
-                .claim(CLAIM_SCOPE, claimScopes)
-                .jwtID(jtiId)
-                .issueTime(new Date(issuedTimeInMillis))
-                .expirationTime(new Date(expirationTimeInMillis));
-        Optional.ofNullable(consumerOrg).ifPresent(it -> claimBuilder.claim(CLAIM_CONSUMER_ORG, it));
-        Optional.ofNullable(accessTokenRequest.getAudience()).ifPresent(it -> claimBuilder.claim(CLAIM_RESOURCE, it));
-
-        final SignedJWT signedJWT = new SignedJWT(jwsHeader, claimBuilder
-                .build());
-        signedJWT.sign(signer);
-        return signedJWT.serialize();
-    }
-
-    private String doAcquireAccessToken(AccessTokenRequest accessTokenRequest) {
-        try {
-            return acquireAccessToken(accessTokenRequest);
-        } catch (JOSEException | IOException e) {
-            log.error("Could not acquire access token due to an exception", e);
-            throw new RuntimeException(e);
-        }
-    }
-
-    private String acquireAccessToken(AccessTokenRequest accessTokenRequest) throws JOSEException, IOException {
-        final String jtiId = UUID.randomUUID().toString();
-        try(MDC.MDCCloseable ignore = MDC.putCloseable(MDC_JTIID, jtiId)) {
-            final byte[] postData = "grant_type={grant_type}&assertion={assertion}"
-                    .replace("{grant_type}", GRANT_TYPE)
-                    .replace("{assertion}", createJwtRequestForAccessToken(accessTokenRequest, jtiId))
-                    .getBytes(StandardCharsets.UTF_8);
-
-            final String tokenEndpointUrlString = properties.getTokenEndpoint();
-            log.debug("Acquiring access token from \"{}\"", tokenEndpointUrlString);
-            long startTime = System.currentTimeMillis();
-            try (final CloseableHttpClient httpClient = HttpClientBuilder.create()
-                    .disableAutomaticRetries()
-                    .disableRedirectHandling()
-                    .disableAuthCaching()
-                    .build()) {
-                return httpClient.execute(createHttpRequest(postData), new HttpClientResponseHandler<String>() {
-                    @Override
-                    public String handleResponse(final ClassicHttpResponse classicHttpResponse) throws IOException {
-                        int responseCode = classicHttpResponse.getCode();
-                        log.debug("Access token response received in {} ms with status {}", System.currentTimeMillis() - startTime, responseCode);
-
-                        if (HttpStatus.SC_OK == responseCode) {
-                            try (final InputStream contentStream = classicHttpResponse.getEntity().getContent()) {
-                                return toString(contentStream);
-                            }
-                        } else {
-                            final String errorFromMaskinporten;
-                            try (final InputStream errorContentStream = classicHttpResponse.getEntity().getContent()) {
-                                errorFromMaskinporten = toString(errorContentStream);
-                            }
-                            final String exceptionMessage = String.format("Http response code: %s, url: '%s', scopes: '%s', message: '%s'", responseCode,
-                                    tokenEndpointUrlString, accessTokenRequest, errorFromMaskinporten);
-                            log.warn("Failed to get token: {}", errorFromMaskinporten);
-                            if (responseCode >= HttpStatus.SC_BAD_REQUEST && responseCode < HttpStatus.SC_INTERNAL_SERVER_ERROR) {
-                                throw new MaskinportenClientTokenRequestException(exceptionMessage, responseCode, errorFromMaskinporten);
+    @Throws(JOSEException::class, IOException::class)
+    private fun acquireAccessToken(accessTokenRequest: AccessTokenRequest): String? {
+        val jtiId = UUID.randomUUID().toString()
+        withLoggingContext(MDC_JTIID to jtiId) {
+            val postData = "grant_type={grant_type}&assertion={assertion}"
+                .replace("{grant_type}", GRANT_TYPE)
+                .replace("{assertion}", createJwtRequestForAccessToken(accessTokenRequest, jtiId))
+                .toByteArray(StandardCharsets.UTF_8)
+            val tokenEndpointUrlString = properties.tokenEndpoint
+            log.debug { """Acquiring access token from "$tokenEndpointUrlString"""" }
+            val startTime = System.currentTimeMillis()
+            HttpClientBuilder.create()
+                .disableAutomaticRetries()
+                .disableRedirectHandling()
+                .disableAuthCaching()
+                .build().use { httpClient ->
+                    return httpClient.execute(createHttpRequest(postData), object : HttpClientResponseHandler<String?> {
+                        @Throws(IOException::class)
+                        override fun handleResponse(classicHttpResponse: ClassicHttpResponse): String? {
+                            val responseCode = classicHttpResponse.code
+                            log.debug { "Access token response received in ${System.currentTimeMillis() - startTime} ms with status $responseCode" }
+                            return if (HttpStatus.SC_OK == responseCode) {
+                                classicHttpResponse.entity.content?.use { contentStream -> toString(contentStream) }
                             } else {
-                                throw new MaskinportenTokenRequestException(exceptionMessage, responseCode, errorFromMaskinporten);
+                                val errorFromMaskinporten: String = classicHttpResponse.entity.content.use { errorContentStream ->
+                                    toString(errorContentStream)
+                                }
+                                log.warn { "Failed to get token: $errorFromMaskinporten" }
+                                val exceptionMessage = "Http response code: $responseCode, url: '$tokenEndpointUrlString', scopes: '$accessTokenRequest', message: '$errorFromMaskinporten'"
+                                if (responseCode >= HttpStatus.SC_BAD_REQUEST && responseCode < HttpStatus.SC_INTERNAL_SERVER_ERROR) {
+                                    throw MaskinportenClientTokenRequestException(exceptionMessage, responseCode, errorFromMaskinporten)
+                                } else {
+                                    throw MaskinportenTokenRequestException(exceptionMessage, responseCode, errorFromMaskinporten)
+                                }
                             }
                         }
-                    }
 
-                    private String toString(InputStream inputStream) throws IOException {
-                        if (inputStream == null) {
-                            return null;
+                        @Throws(IOException::class)
+                        private fun toString(inputStream: InputStream): String {
+                            InputStreamReader(inputStream).use { isr ->
+                                BufferedReader(isr).use { br ->
+                                    return br.lines().collect(Collectors.joining("\n"))
+                                }
+                            }
                         }
-
-                        try (InputStreamReader isr = new InputStreamReader(inputStream);
-                             BufferedReader br = new BufferedReader(isr)) {
-                            return br.lines().collect(Collectors.joining("\n"));
-                        }
-                    }
-
-                });
-            }
+                    })
+                }
         }
     }
 
-    private ClassicHttpRequest createHttpRequest(byte[] entityBuffer) {
-        return ClassicRequestBuilder.post(properties.getTokenEndpoint())
-                .setCharset(StandardCharsets.UTF_8)
-                .addHeader("Charset", StandardCharsets.UTF_8.name())
-                .addHeader(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_FORM_URLENCODED.getMimeType())
-                .setEntity(entityBuffer, ContentType.APPLICATION_FORM_URLENCODED)
-                .build();
+    private fun createHttpRequest(entityBuffer: ByteArray): ClassicHttpRequest {
+        return ClassicRequestBuilder.post(properties.tokenEndpoint)
+            .setCharset(StandardCharsets.UTF_8)
+            .addHeader("Charset", StandardCharsets.UTF_8.name())
+            .addHeader(HttpHeaders.CONTENT_TYPE, ContentType.APPLICATION_FORM_URLENCODED.mimeType)
+            .setEntity(entityBuffer, ContentType.APPLICATION_FORM_URLENCODED)
+            .build()
     }
 
-
-    private Map<String, Object> parse(String value) {
-        try {
-            return JSONObjectUtils.parse(value);
-        } catch (ParseException e) {
-            throw new RuntimeException(e);
+    private fun parse(value: String): Map<String, Any> {
+        return try {
+            JSONObjectUtils.parse(value)
+        } catch (e: ParseException) {
+            throw RuntimeException(e)
         }
     }
 
-    private Map<String, Object> parseAccessToken(Map<String, Object> json) {
-        try {
-            Object accessToken = Objects.requireNonNull(json.get("access_token"), "JSON response fra Maskinporten mangler felt 'access_token'");
-            return JWSObject.parse(accessToken.toString())
-                    .getPayload()
-                    .toJSONObject();
-        } catch (ParseException e) {
-            throw new RuntimeException(e);
+    private fun parseAccessToken(json: Map<String, Any>): Map<String, Any> {
+        return try {
+            val accessToken = Objects.requireNonNull(json["access_token"], "JSON response fra Maskinporten mangler felt 'access_token'")
+            JWSObject.parse(accessToken.toString())
+                .payload
+                .toJSONObject()
+        } catch (e: ParseException) {
+            throw RuntimeException(e)
         }
     }
 
-    private static Collection<String> scopesToCollection(String... scopes) {
-        return Arrays.asList(String.join(" ", scopes).split("\\s"));
+    companion object {
+        const val GRANT_TYPE = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+        const val CLAIM_SCOPE = "scope"
+        const val CLAIM_CONSUMER_ORG = "consumer_org"
+        const val CLAIM_RESOURCE = "resource"
+        const val MDC_JTIID = "jtiId"
     }
 }
