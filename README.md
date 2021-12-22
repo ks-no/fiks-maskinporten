@@ -22,6 +22,7 @@ Konfigurasjon gjøres ved initiering av klienten og styres i feltet "numberOfSec
 ```
 
 ## Eksempel
+### Java
 ```java
 import no.ks.fiks.maskinporten.Maskinportenklient;
 import no.ks.fiks.maskinporten.MaskinportenklientProperties;
@@ -58,6 +59,16 @@ public class Application {
     }
 
 }
+```
+### Kotlin
+```kotlin
+val keyStore: Keystore = ...
+val maskinportenklientProperties = MaskinportenklientProperties(
+            audience = "https://ver2.maskinporten.no/",
+            tokenEndpoint = "https://ver2.maskinporten.no/token",
+            issuer = "<klient-id-utdelt-av-difi>",
+            numberOfSecondsLeftBeforeExpire = 10)
+val klient = Maskinportenklient(keyStore, "mykey", "keypassword".toCharArray(), maskinportenklientProperties)            
 ```
 Digdir vedlikeholder [liste med gyldige verdier for de miljøene de tilbyr](https://docs.digdir.no/maskinporten_func_wellknown.html)
 
