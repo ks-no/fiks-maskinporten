@@ -41,7 +41,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
-import java.security.cert.CertificateEncodingException;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.text.ParseException;
@@ -183,16 +182,16 @@ class MaskinportenklientTest {
     void getAccessTokenFails() {
         try (final ClientAndServer client = ClientAndServer.startClientAndServer()) {
             client.when(
-                    request()
-                            .withSecure(false)
-                            .withMethod(HttpMethod.POST.name())
-                            .withPath("/token")
-                            .withBody(
-                                    params(
-                                            param("grant_type", Maskinportenklient.GRANT_TYPE)
-                                    )
-                            ),
-                    Times.exactly(1))
+                            request()
+                                    .withSecure(false)
+                                    .withMethod(HttpMethod.POST.name())
+                                    .withPath("/token")
+                                    .withBody(
+                                            params(
+                                                    param("grant_type", Maskinportenklient.GRANT_TYPE)
+                                            )
+                                    ),
+                            Times.exactly(1))
                     .respond(response()
                             .withBody("FAILURE WAS AN OPTION AFTER ALL")
                             .withStatusCode(HttpStatusCode.INTERNAL_SERVER_ERROR_500.code()));
@@ -207,7 +206,7 @@ class MaskinportenklientTest {
     @Test
     void getAccessTokenNetworkFailure() throws IOException {
         int localport;
-        try(ServerSocket s = new ServerSocket(0)) {
+        try (ServerSocket s = new ServerSocket(0)) {
             localport = s.getLocalPort();
         }
         final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", localport));
@@ -290,15 +289,16 @@ class MaskinportenklientTest {
     private Maskinportenklient createClient(final String tokenEndpoint) {
         final VirksomhetSertifikater virksomhetSertifikater = createVirksomhetSertifikater();
         VirksomhetSertifikater.KsVirksomhetSertifikatStore authKeyStore = virksomhetSertifikater.requireAuthKeyStore();
-        final MaskinportenklientProperties maskinportenklientProperties = new MaskinportenklientProperties("https://ver2.maskinporten.no/",
-                tokenEndpoint,
-                "77c0a0ba-d20d-424c-b5dd-f1c63da07fc4",
-                10,
-                null,
-                1000);
+
+        final MaskinportenklientProperties maskinportenklientProperties = MaskinportenklientProperties.builder().audience("https://ver2.maskinporten.no/")
+                .tokenEndpoint(tokenEndpoint)
+                .issuer("77c0a0ba-d20d-424c-b5dd-f1c63da07fc4")
+                .numberOfSecondsLeftBeforeExpire(10)
+                .timeoutMillis(1000)
+                .build();
         try {
             return new Maskinportenklient(authKeyStore.getPrivateKey(), authKeyStore.getCertificate(), maskinportenklientProperties);
-        } catch (CertificateEncodingException e) {
+        } catch (Exception e) {
             throw new IllegalStateException("Feil under lesing av keystore", e);
         }
 
