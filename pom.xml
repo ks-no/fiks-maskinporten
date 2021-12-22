@@ -31,6 +31,8 @@
 
     <properties>
         <kotlin.version>1.6.10</kotlin.version>
+        <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
+
         <nimbus-jose-jwt.version>9.15.2</nimbus-jose-jwt.version>
         <virksomhetssertifikat.version>1.2.2</virksomhetssertifikat.version>
         <maven.compiler.source>1.8</maven.compiler.source>
