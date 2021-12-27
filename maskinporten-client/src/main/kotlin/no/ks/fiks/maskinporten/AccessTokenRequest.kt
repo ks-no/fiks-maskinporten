@@ -32,7 +32,7 @@ class AccessTokenRequestBuilder {
 
     private var audience: String? = null
 
-    fun addScope(scope: String): AccessTokenRequestBuilder {
+    fun scope(scope: String): AccessTokenRequestBuilder {
         this.scopes += scope
         return this
     }
