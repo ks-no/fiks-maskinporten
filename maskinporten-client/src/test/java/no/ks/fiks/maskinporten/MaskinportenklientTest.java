@@ -25,7 +25,7 @@ import org.apache.hc.client5.http.HttpHostConnectException;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.apache.hc.core5.http.NameValuePair;
-import org.apache.hc.core5.net.URLEncodedUtils;
+import org.apache.hc.core5.net.WWWFormCodec;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -85,7 +85,7 @@ class MaskinportenklientTest {
 
         @Override
         public HttpResponse handle(HttpRequest httpRequest) throws Exception {
-            final List<NameValuePair> formParamPairs = URLEncodedUtils.parse(httpRequest.getBodyAsString(), StandardCharsets.UTF_8);
+            final List<NameValuePair> formParamPairs = WWWFormCodec.parse(httpRequest.getBodyAsString(), StandardCharsets.UTF_8);
 
             final String assertion = formParamPairs.stream().filter(nv -> "assertion".equals(nv.getName())).map(NameValuePair::getValue).findFirst().orElseThrow(() -> new IllegalArgumentException("Fant ikke parameter \"assertion\""));
             final JWTClaimsSet jwtClaimsSet = SignedJWT.parse(assertion).getJWTClaimsSet();

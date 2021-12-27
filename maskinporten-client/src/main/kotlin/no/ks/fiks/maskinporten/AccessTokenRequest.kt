@@ -16,7 +16,7 @@ data class AccessTokenRequest(
     /**
      * Ønsket audience for access token. Valgfritt.
      */
-    val audience: String?) {
+    val audience: String? = null) {
 
     companion object {
         /**
@@ -49,7 +49,7 @@ class AccessTokenRequestBuilder {
     /**
      * Legger til et set med scopes som skal brukes i forespørsel mot Maskinporten. Minst et scope må oppgies
      */
-    fun scopes(scopes: java.util.Set<String>): AccessTokenRequestBuilder {
+    fun scopes(scopes: MutableSet<String>): AccessTokenRequestBuilder {
         this.scopes = scopes.toSet()
         return this
     }

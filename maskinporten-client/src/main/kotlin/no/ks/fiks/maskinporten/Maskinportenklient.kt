@@ -11,7 +11,6 @@ import net.jodah.expiringmap.ExpirationPolicy
 import net.jodah.expiringmap.ExpiringEntryLoader
 import net.jodah.expiringmap.ExpiringMap
 import net.jodah.expiringmap.ExpiringValue
-import no.ks.fiks.maskinporten.AccessTokenRequest.Companion.builder
 import no.ks.fiks.maskinporten.error.MaskinportenClientTokenRequestException
 import no.ks.fiks.maskinporten.error.MaskinportenTokenRequestException
 import org.apache.hc.client5.http.config.RequestConfig
@@ -94,7 +93,7 @@ class Maskinportenklient(privateKey: PrivateKey, certificate: X509Certificate, p
     }
 
     override fun getAccessToken(scopes: Collection<String>): String? {
-        return getTokenForRequest(builder().scopes(HashSet(scopes)).build())
+        return getTokenForRequest(AccessTokenRequest(scopes = scopes.toSet()))
     }
 
     override fun getAccessToken(vararg scopes: String): String? {
@@ -102,7 +101,7 @@ class Maskinportenklient(privateKey: PrivateKey, certificate: X509Certificate, p
     }
 
     override fun getDelegatedAccessToken(consumerOrg: String, scopes: Collection<String>): String? {
-        return getTokenForRequest(builder().scopes(HashSet(scopes)).consumerOrg(consumerOrg).build())
+        return getTokenForRequest(AccessTokenRequest(scopes = scopes.toSet(), consumerOrg = consumerOrg))
     }
 
     override fun getDelegatedAccessToken(consumerOrg: String, vararg scopes: String): String? {
@@ -110,7 +109,7 @@ class Maskinportenklient(privateKey: PrivateKey, certificate: X509Certificate, p
     }
 
     override fun getAccessTokenWithAudience(audience: String, scopes: Collection<String>): String? {
-        return getTokenForRequest(builder().scopes(HashSet(scopes)).audience(audience).build())
+        return getTokenForRequest(AccessTokenRequest(scopes = scopes.toSet(), audience = audience))
     }
 
     override fun getAccessTokenWithAudience(audience: String, vararg scopes: String): String? {
