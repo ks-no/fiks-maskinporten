@@ -192,7 +192,7 @@
                     <version>${dokka.version}</version>
                     <executions>
                         <execution>
-                            <phase>verify</phase>
+                            <phase>prepare-package</phase>
                             <goals>
                                 <goal>javadocJar</goal>
                             </goals>
