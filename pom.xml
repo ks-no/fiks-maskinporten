@@ -6,8 +6,8 @@
 
     <parent>
         <groupId>no.ks.fiks.pom</groupId>
-        <artifactId>fiks-ekstern-super-pom</artifactId>
-        <version>1.0.6</version>
+        <artifactId>fiks-ekstern-kotlin-superpom</artifactId>
+        <version>1.0.7</version>
     </parent>
 
     <groupId>no.ks.fiks</groupId>
@@ -30,8 +30,6 @@
     </scm>
 
     <properties>
-        <kotlin.version>1.6.10</kotlin.version>
-        <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
 
         <nimbus-jose-jwt.version>9.15.2</nimbus-jose-jwt.version>
         <virksomhetssertifikat.version>2.0.0</virksomhetssertifikat.version>
@@ -40,7 +38,6 @@
         <mockserver.version>5.11.2</mockserver.version>
         <maven.compiler.target>1.8</maven.compiler.target>
         <slf4j.version>1.7.32</slf4j.version>
-        <kotlin-logging.version>2.1.21</kotlin-logging.version>
         <maven-surefire-plugin.version>3.0.0-M5</maven-surefire-plugin.version>
         <lang-tag.version>1.5</lang-tag.version>
         <oauth2-oidc-sdk.version>9.20</oauth2-oidc-sdk.version>
@@ -50,9 +47,7 @@
         <junit.version>5.8.2</junit.version>
         <apache-httpclient.version>5.1.2</apache-httpclient.version>
         <maven-deploy-plugin.version>2.8.2</maven-deploy-plugin.version>
-        <kotest.version>5.0.3</kotest.version>
         <mockk.version>1.12.1</mockk.version>
-        <dokka.version>1.6.10</dokka.version>
     </properties>
 
     <dependencyManagement>
@@ -187,19 +182,7 @@
                         </dependency>
                     </dependencies>
                 </plugin>
-                <plugin>
-                    <groupId>org.jetbrains.dokka</groupId>
-                    <artifactId>dokka-maven-plugin</artifactId>
-                    <version>${dokka.version}</version>
-                    <executions>
-                        <execution>
-                            <phase>prepare-package</phase>
-                            <goals>
-                                <goal>javadocJar</goal>
-                            </goals>
-                        </execution>
-                    </executions>
-                </plugin>
+
             </plugins>
         </pluginManagement>
         <plugins>
