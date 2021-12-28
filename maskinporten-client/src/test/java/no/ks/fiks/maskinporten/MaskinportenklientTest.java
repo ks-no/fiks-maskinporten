@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.io.Resources;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
@@ -20,7 +19,6 @@ import no.ks.fiks.maskinporten.error.MaskinportenTokenRequestException;
 import no.ks.fiks.virksomhetsertifikat.Sertifikat;
 import no.ks.fiks.virksomhetsertifikat.SertifikatType;
 import no.ks.fiks.virksomhetsertifikat.VirksomhetSertifikater;
-import no.ks.fiks.virksomhetsertifikat.VirksomhetSertifikaterProperties;
 import org.apache.hc.client5.http.HttpHostConnectException;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
@@ -349,7 +347,6 @@ class MaskinportenklientTest {
 
 
     private VirksomhetSertifikater createVirksomhetSertifikater() {
-        final VirksomhetSertifikaterProperties properties = new VirksomhetSertifikaterProperties();
         final Sertifikat authSertifikat = new Sertifikat();
         authSertifikat.setCertificateAlias("authentication certificate");
         authSertifikat.setKeystorePassword("KS_PASSWORD");
@@ -357,8 +354,7 @@ class MaskinportenklientTest {
         authSertifikat.setPrivateKeyPassword("KS_PASSWORD");
         authSertifikat.setSertifikatType(SertifikatType.AUTH);
         authSertifikat.setKeystorePath(Resources.getResource("KS-virksomhetssertifikat-auth.p12").getPath());
-        properties.setSertifikater(ImmutableSet.of(authSertifikat));
-        return new VirksomhetSertifikater(properties);
+        return new VirksomhetSertifikater(Collections.singleton(authSertifikat));
     }
 
 }

@@ -3,6 +3,7 @@ package no.ks.fiks.maskinporten
 import io.kotest.core.spec.style.StringSpec
 import io.mockk.every
 import io.mockk.mockk
+import no.ks.fiks.virksomhetsertifikat.VirksomhetSertifikatAutoConfigure
 import no.ks.fiks.virksomhetsertifikat.VirksomhetSertifikater
 import org.assertj.core.api.Assertions.assertThat
 import org.springframework.boot.autoconfigure.AutoConfigurations
@@ -45,6 +46,7 @@ class MaskinportenAutoConfigureTest : StringSpec() {
                     "maskinporten.tokenEndpoint=$tokenEndpoint",
                     "maskinporten.issuer=$issuer"
                 )
+                .withConfiguration(AutoConfigurations.of(VirksomhetSertifikatAutoConfigure::class.java))
                 .withBean(VirksomhetSertifikater::class.java, { virksomhetSertifikater })
                 .run { context ->
                     assertThat(context).hasSingleBean(Maskinportenklient::class.java)

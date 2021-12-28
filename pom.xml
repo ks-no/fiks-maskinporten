@@ -34,7 +34,7 @@
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
 
         <nimbus-jose-jwt.version>9.15.2</nimbus-jose-jwt.version>
-        <virksomhetssertifikat.version>1.2.2</virksomhetssertifikat.version>
+        <virksomhetssertifikat.version>2.0.0</virksomhetssertifikat.version>
         <maven.compiler.source>1.8</maven.compiler.source>
         <expiringmap.version>0.5.10</expiringmap.version>
         <mockserver.version>5.11.2</mockserver.version>
@@ -92,11 +92,7 @@
                 <artifactId>hibernate-validator</artifactId>
                 <version>${hibernate-validator.version}</version>
             </dependency>
-            <dependency>
-                <groupId>no.ks.fiks</groupId>
-                <artifactId>virksomhetssertifikat</artifactId>
-                <version>${virksomhetssertifikat.version}</version>
-            </dependency>
+
             <dependency>
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-api</artifactId>
@@ -123,6 +119,11 @@
                 <groupId>org.assertj</groupId>
                 <artifactId>assertj-core</artifactId>
                 <version>${assertj.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>no.ks.fiks</groupId>
+                <artifactId>virksomhetssertifikat</artifactId>
+                <version>${virksomhetssertifikat.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.github.microutils</groupId>
