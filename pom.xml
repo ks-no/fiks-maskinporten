@@ -47,7 +47,7 @@
         <junit.version>5.8.2</junit.version>
         <apache-httpclient.version>5.1.2</apache-httpclient.version>
         <maven-deploy-plugin.version>2.8.2</maven-deploy-plugin.version>
-        <mockk.version>1.12.1</mockk.version>
+        <mockk.version>1.12.2</mockk.version>
     </properties>
 
     <dependencyManagement>
