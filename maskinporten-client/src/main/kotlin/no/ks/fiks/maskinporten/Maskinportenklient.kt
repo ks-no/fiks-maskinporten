@@ -92,37 +92,37 @@ class Maskinportenklient(privateKey: PrivateKey, certificate: X509Certificate, p
         return value.toString().toLong()
     }
 
-    override fun getAccessToken(scopes: Collection<String>): String? {
+    override fun getAccessToken(scopes: Collection<String>): String {
         return getTokenForRequest(AccessTokenRequest(scopes = scopes.toSet()))
     }
 
-    override fun getAccessToken(vararg scopes: String): String? {
+    override fun getAccessToken(vararg scopes: String): String {
         return getAccessToken(scopesToCollection(*scopes))
     }
 
-    override fun getDelegatedAccessToken(consumerOrg: String, scopes: Collection<String>): String? {
+    override fun getDelegatedAccessToken(consumerOrg: String, scopes: Collection<String>): String {
         return getTokenForRequest(AccessTokenRequest(scopes = scopes.toSet(), consumerOrg = consumerOrg))
     }
 
-    override fun getDelegatedAccessToken(consumerOrg: String, vararg scopes: String): String? {
+    override fun getDelegatedAccessToken(consumerOrg: String, vararg scopes: String): String {
         return getDelegatedAccessToken(consumerOrg, scopesToCollection(*scopes))
     }
 
-    override fun getAccessTokenWithAudience(audience: String, scopes: Collection<String>): String? {
+    override fun getAccessTokenWithAudience(audience: String, scopes: Collection<String>): String {
         return getTokenForRequest(AccessTokenRequest(scopes = scopes.toSet(), audience = audience))
     }
 
-    override fun getAccessTokenWithAudience(audience: String, vararg scopes: String): String? {
+    override fun getAccessTokenWithAudience(audience: String, vararg scopes: String): String {
         return getAccessTokenWithAudience(audience, scopesToCollection(*scopes))
     }
 
-    override fun getAccessToken(request: AccessTokenRequest): String? {
+    override fun getAccessToken(request: AccessTokenRequest): String {
         return getTokenForRequest(request)
     }
 
-    private fun getTokenForRequest(accessTokenRequest: AccessTokenRequest): String? {
+    private fun getTokenForRequest(accessTokenRequest: AccessTokenRequest): String {
         require(accessTokenRequest.scopes.isNotEmpty()) { "Minst ett scope må oppgies" }
-        return map[accessTokenRequest]
+        return map[accessTokenRequest] ?: throw IllegalStateException("En ukjent feil skjedde ved forsøk på å hente token fra Maskinporten")
     }
 
     @Throws(JOSEException::class)
