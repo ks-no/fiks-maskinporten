@@ -41,7 +41,7 @@
         <maven-surefire-plugin.version>3.0.0-M5</maven-surefire-plugin.version>
         <lang-tag.version>1.5</lang-tag.version>
         <oauth2-oidc-sdk.version>9.20.1</oauth2-oidc-sdk.version>
-        <hibernate-validator.version>6.2.0.Final</hibernate-validator.version>
+        <hibernate-validator.version>7.0.2.Final</hibernate-validator.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <assertj.version>3.22.0</assertj.version>
         <junit.version>5.8.2</junit.version>
