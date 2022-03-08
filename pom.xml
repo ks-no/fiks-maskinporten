@@ -31,7 +31,7 @@
 
     <properties>
 
-        <nimbus-jose-jwt.version>9.15.2</nimbus-jose-jwt.version>
+        <nimbus-jose-jwt.version>9.21</nimbus-jose-jwt.version>
         <virksomhetssertifikat.version>2.0.0</virksomhetssertifikat.version>
         <maven.compiler.source>1.8</maven.compiler.source>
         <expiringmap.version>0.5.10</expiringmap.version>
