@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
     <properties>
         <spring-boot.version>2.7.0</spring-boot.version>
-        <kotest-extensions-spring.version>1.1.0</kotest-extensions-spring.version>
+        <kotest-extensions-spring.version>1.1.1</kotest-extensions-spring.version>
     </properties>
 
     <parent>
