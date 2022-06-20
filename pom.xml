@@ -30,23 +30,25 @@
     </scm>
 
     <properties>
+        <maven.compiler.target>1.8</maven.compiler.target>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <maven-deploy-plugin.version>2.8.2</maven-deploy-plugin.version>
+        <maven-surefire-plugin.version>3.0.0-M7</maven-surefire-plugin.version>
 
         <nimbus-jose-jwt.version>9.23</nimbus-jose-jwt.version>
         <virksomhetssertifikat.version>2.0.0</virksomhetssertifikat.version>
-        <maven.compiler.source>1.8</maven.compiler.source>
         <expiringmap.version>0.5.10</expiringmap.version>
         <mockserver.version>5.13.2</mockserver.version>
-        <maven.compiler.target>1.8</maven.compiler.target>
         <slf4j.version>1.7.36</slf4j.version>
-        <maven-surefire-plugin.version>3.0.0-M7</maven-surefire-plugin.version>
         <lang-tag.version>1.6</lang-tag.version>
         <oauth2-oidc-sdk.version>9.37.2</oauth2-oidc-sdk.version>
         <hibernate-validator.version>6.2.0.Final</hibernate-validator.version>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <assertj.version>3.23.1</assertj.version>
-        <junit.version>5.8.2</junit.version>
         <apache-httpclient.version>5.1.3</apache-httpclient.version>
-        <maven-deploy-plugin.version>2.8.2</maven-deploy-plugin.version>
+
+        <junit.version>5.8.2</junit.version>
+        <assertj.version>3.23.1</assertj.version>
         <mockk.version>1.12.4</mockk.version>
     </properties>
 
