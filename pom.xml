@@ -39,7 +39,7 @@
         <maven.compiler.target>1.8</maven.compiler.target>
         <slf4j.version>1.7.36</slf4j.version>
         <maven-surefire-plugin.version>3.0.0-M7</maven-surefire-plugin.version>
-        <lang-tag.version>1.5</lang-tag.version>
+        <lang-tag.version>1.6</lang-tag.version>
         <oauth2-oidc-sdk.version>9.37.2</oauth2-oidc-sdk.version>
         <hibernate-validator.version>6.2.0.Final</hibernate-validator.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
