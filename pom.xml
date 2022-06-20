@@ -45,7 +45,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <assertj.version>3.23.1</assertj.version>
         <junit.version>5.8.2</junit.version>
-        <apache-httpclient.version>5.1.2</apache-httpclient.version>
+        <apache-httpclient.version>5.1.3</apache-httpclient.version>
         <maven-deploy-plugin.version>2.8.2</maven-deploy-plugin.version>
         <mockk.version>1.12.2</mockk.version>
     </properties>
