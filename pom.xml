@@ -43,7 +43,7 @@
         <mockserver.version>5.13.2</mockserver.version>
         <slf4j.version>1.7.36</slf4j.version>
         <lang-tag.version>1.6</lang-tag.version>
-        <oauth2-oidc-sdk.version>9.37.2</oauth2-oidc-sdk.version>
+        <oauth2-oidc-sdk.version>9.42</oauth2-oidc-sdk.version>
         <hibernate-validator.version>6.2.3.Final</hibernate-validator.version>
         <apache-httpclient.version>5.1.3</apache-httpclient.version>
 
