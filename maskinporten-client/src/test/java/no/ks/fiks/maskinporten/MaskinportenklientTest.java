@@ -54,6 +54,7 @@ import static org.mockserver.model.HttpResponse.response;
 import static org.mockserver.model.Parameter.param;
 import static org.mockserver.model.ParameterBody.params;
 
+@SuppressWarnings("deprecation")
 class MaskinportenklientTest {
 
     private static final String SCOPE = "provider:scope";
