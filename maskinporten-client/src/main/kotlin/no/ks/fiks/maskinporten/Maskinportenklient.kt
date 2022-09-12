@@ -92,26 +92,46 @@ class Maskinportenklient(privateKey: PrivateKey, certificate: X509Certificate, p
         return value.toString().toLong()
     }
 
+    @Deprecated(
+        "Bruk {@link #getAccessToken(AccessTokenRequest)}"
+    )
     override fun getAccessToken(scopes: Collection<String>): String {
         return getTokenForRequest(AccessTokenRequest(scopes = scopes.toSet()))
     }
 
+    @Deprecated(
+        "Bruk {@link #getAccessToken(AccessTokenRequest)}"
+    )
     override fun getAccessToken(vararg scopes: String): String {
         return getAccessToken(scopesToCollection(*scopes))
     }
 
+    @Deprecated(
+        "Bruk {@link #getAccessToken(AccessTokenRequest)}"
+    )
     override fun getDelegatedAccessToken(consumerOrg: String, scopes: Collection<String>): String {
         return getTokenForRequest(AccessTokenRequest(scopes = scopes.toSet(), consumerOrg = consumerOrg))
     }
 
+    @Deprecated(
+        "Bruk {@link #getAccessToken(AccessTokenRequest)}"
+    )
     override fun getDelegatedAccessToken(consumerOrg: String, vararg scopes: String): String {
         return getDelegatedAccessToken(consumerOrg, scopesToCollection(*scopes))
     }
 
+    @Deprecated(
+        "Bruk {@link #getAccessToken(AccessTokenRequest)}"
+    )
     override fun getAccessTokenWithAudience(audience: String, scopes: Collection<String>): String {
         return getTokenForRequest(AccessTokenRequest(scopes = scopes.toSet(), audience = audience))
     }
 
+    @Deprecated(
+        """Bruk {@link #getAccessToken(AccessTokenRequest)}
+     
+      """
+    )
     override fun getAccessTokenWithAudience(audience: String, vararg scopes: String): String {
         return getAccessTokenWithAudience(audience, scopesToCollection(*scopes))
     }
