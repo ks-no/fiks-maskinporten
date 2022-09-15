@@ -41,7 +41,7 @@
         <virksomhetssertifikat.version>2.1.1</virksomhetssertifikat.version>
         <expiringmap.version>0.5.10</expiringmap.version>
         <mockserver.version>5.14.0</mockserver.version>
-        <slf4j.version>1.7.36</slf4j.version>
+        <slf4j.version>2.0.1</slf4j.version>
         <lang-tag.version>1.7</lang-tag.version>
         <oauth2-oidc-sdk.version>9.43.1</oauth2-oidc-sdk.version>
         <hibernate-validator.version>6.2.3.Final</hibernate-validator.version>
