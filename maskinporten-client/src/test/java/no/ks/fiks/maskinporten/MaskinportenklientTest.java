@@ -170,7 +170,7 @@ class MaskinportenklientTest {
                             )
             ).respond(callback().withCallbackClass(OidcMockExpectation.class));
 
-            try(CloseableHttpClient httpClient = HttpClientBuilder.create().disableAutomaticRetries().disableRedirectHandling().disableAuthCaching().build()) {
+            try (CloseableHttpClient httpClient = HttpClientBuilder.create().disableAutomaticRetries().disableRedirectHandling().disableAuthCaching().build()) {
                 final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()), httpClient);
                 assertThat(maskinportenklient.getAccessToken(SCOPE)).isNotBlank();
                 // httpClient should not be closed yet, have another go
@@ -348,14 +348,14 @@ class MaskinportenklientTest {
 
 
     private VirksomhetSertifikater createVirksomhetSertifikater() {
-        final Sertifikat authSertifikat = new Sertifikat();
-        authSertifikat.setCertificateAlias("authentication certificate");
-        authSertifikat.setKeystorePassword("KS_PASSWORD");
-        authSertifikat.setPrivateKeyAlias("authentication certificate");
-        authSertifikat.setPrivateKeyPassword("KS_PASSWORD");
-        authSertifikat.setSertifikatType(SertifikatType.AUTH);
-        authSertifikat.setKeystorePath(Resources.getResource("KS-virksomhetssertifikat-auth.p12").getPath());
-        return new VirksomhetSertifikater(Collections.singleton(authSertifikat));
+        return new VirksomhetSertifikater(Collections.singleton(new Sertifikat(
+                SertifikatType.AUTH,
+                "KS_PASSWORD",
+                Resources.getResource("KS-virksomhetssertifikat-auth.p12").getPath(),
+                "authentication certificate",
+                "authentication certificate",
+                "KS_PASSWORD"
+        )));
     }
 
 }
