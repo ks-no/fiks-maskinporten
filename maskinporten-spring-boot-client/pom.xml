@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <properties>
-        <spring-boot.version>2.7.3</spring-boot.version>
+        <spring-boot.version>2.7.5</spring-boot.version>
         <kotest-extensions-spring.version>1.1.2</kotest-extensions-spring.version>
     </properties>
 
