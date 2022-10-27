@@ -49,7 +49,7 @@
 
         <junit.version>5.9.1</junit.version>
         <assertj.version>3.23.1</assertj.version>
-        <mockk.version>1.12.7</mockk.version>
+        <mockk.version>1.13.2</mockk.version>
     </properties>
 
     <dependencyManagement>
