@@ -131,10 +131,12 @@ class MaskinportenAutoConfigureTest : StringSpec() {
             TODO("Not yet implemented")
         }
 
+        @Deprecated("Deprecated in Java")
         override fun getIssuerDN(): Principal {
             TODO("Not yet implemented")
         }
 
+        @Deprecated("Deprecated in Java")
         override fun getSubjectDN(): Principal {
             TODO("Not yet implemented")
         }
