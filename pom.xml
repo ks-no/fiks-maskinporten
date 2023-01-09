@@ -48,7 +48,7 @@
         <apache-httpclient.version>5.2.1</apache-httpclient.version>
 
         <junit.version>5.9.1</junit.version>
-        <assertj.version>3.24.0</assertj.version>
+        <assertj.version>3.24.1</assertj.version>
         <mockk.version>1.13.3</mockk.version>
     </properties>
 
