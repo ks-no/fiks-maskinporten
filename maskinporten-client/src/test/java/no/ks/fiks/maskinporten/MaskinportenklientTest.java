@@ -91,18 +91,20 @@ class MaskinportenklientTest {
             final String clientId = jwtClaimsSet.getStringArrayClaim("aud")[0];
             final String scope = jwtClaimsSet.getStringClaim("scope");
             final String resource = jwtClaimsSet.getStringClaim("resource");
+            final String pid = jwtClaimsSet.getStringClaim("pid");
             return response()
                     .withStatusCode(HttpStatusCode.OK_200.code())
                     .withContentType(MediaType.APPLICATION_JSON)
-                    .withBody(generateToken(clientId, scope, resource), MediaType.APPLICATION_JSON);
+                    .withBody(generateToken(clientId, scope, resource, pid), MediaType.APPLICATION_JSON);
         }
 
-        private String generateToken(String clientId, String scope, String resource) {
+        private String generateToken(String clientId, String scope, String resource, String pid) {
             JWTClaimsSet.Builder claimsSetBuilder = new JWTClaimsSet.Builder()
                     .claim("consumer", ImmutableMap.of("authority", "iso6523-actorid-upis", "ID", "0192:971032146"))
                     .claim("client_id", clientId)
                     .claim("scope", scope);
             Optional.ofNullable(resource).ifPresent(it -> claimsSetBuilder.claim("aud", resource));
+            Optional.ofNullable(pid).ifPresent(it -> claimsSetBuilder.claim("pid", pid));
             ObjectNode objectNode = MAPPER.createObjectNode();
             objectNode.put("access_token", createJwt(claimsSetBuilder.build()));
             objectNode.put("expires_in", 120);
@@ -312,6 +314,33 @@ class MaskinportenklientTest {
             assertThat(accessToken).isNotBlank();
             SignedJWT jwt = SignedJWT.parse(accessToken);
             assertThat(jwt.getJWTClaimsSet().getAudience()).isEqualTo(Collections.singletonList(audience));
+        }
+    }
+
+    @DisplayName("Generate end-user-restricted token")
+    @Test
+    void getEndUserRestrictedAccessToken() throws ParseException {
+        final String audience = UUID.randomUUID().toString();
+        final String pid = "16032826532";
+        try (final ClientAndServer client = ClientAndServer.startClientAndServer()) {
+            client.when(
+                    request()
+                            .withSecure(false)
+                            .withMethod(HttpMethod.POST.name())
+                            .withPath("/token")
+                            .withBody(
+                                    params(
+                                            param("grant_type", Maskinportenklient.GRANT_TYPE)
+                                    )
+                            )
+            ).respond(callback().withCallbackClass(OidcMockExpectation.class));
+            final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()));
+
+            final AccessTokenRequest request = new AccessTokenRequestBuilder().scope(SCOPE).audience(audience).pid(pid).build();
+            final String accessToken = maskinportenklient.getAccessToken(request);
+            assertThat(accessToken).isNotBlank();
+            SignedJWT jwt = SignedJWT.parse(accessToken);
+            assertThat(jwt.getJWTClaimsSet().getClaim("pid")).isEqualTo(pid);
         }
     }
 
