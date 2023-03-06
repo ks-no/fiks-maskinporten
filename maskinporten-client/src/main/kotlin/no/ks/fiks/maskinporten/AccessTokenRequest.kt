@@ -16,7 +16,12 @@ data class AccessTokenRequest(
     /**
      * Ønsket audience for access token. Valgfritt.
      */
-    val audience: String? = null) {
+    val audience: String? = null,
+
+    /**
+     * PID ved ønske om end-user-restricted token. Valgfritt.
+     */
+    val pid: String? = null) {
 
     companion object {
         /**
@@ -37,6 +42,8 @@ class AccessTokenRequestBuilder {
     private var consumerOrg: String? = null
 
     private var audience: String? = null
+
+    private var pid: String? = null
 
     /**
      * Legger til et scope som skal brukes i forespørsel mot Maskinporten. Minst et scope må oppgies
@@ -71,12 +78,21 @@ class AccessTokenRequestBuilder {
     }
 
     /**
+     * Brukes til forespørsler der man ønsker at det resulterende tokenet skal være begenset til én sluttbruker.
+     */
+    fun pid(pid: String): AccessTokenRequestBuilder {
+        this.pid = pid
+        return this
+    }
+
+    /**
      * Bygger forespørselsobjekt
      */
     fun build(): AccessTokenRequest = AccessTokenRequest(
         scopes = scopes.toSet(),
         audience = this.audience,
-        consumerOrg = this.consumerOrg
+        consumerOrg = this.consumerOrg,
+        pid = this.pid
     )
 
 }

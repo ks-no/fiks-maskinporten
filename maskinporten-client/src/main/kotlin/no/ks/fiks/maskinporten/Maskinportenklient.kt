@@ -163,6 +163,7 @@ class Maskinportenklient(privateKey: PrivateKey, certificate: X509Certificate, p
             .expirationTime(Date(expirationTimeInMillis))
         consumerOrg?.run { claimBuilder.claim(CLAIM_CONSUMER_ORG, this) }
         accessTokenRequest.audience?.run { claimBuilder.claim(CLAIM_RESOURCE, this) }
+        accessTokenRequest.pid?.run { claimBuilder.claim(CLAIM_PID, this) }
         val signedJWT = SignedJWT(
             jwsHeader, claimBuilder
                 .build()
@@ -274,6 +275,7 @@ class Maskinportenklient(privateKey: PrivateKey, certificate: X509Certificate, p
         const val CLAIM_SCOPE = "scope"
         const val CLAIM_CONSUMER_ORG = "consumer_org"
         const val CLAIM_RESOURCE = "resource"
+        const val CLAIM_PID = "pid"
         const val MDC_JTIID = "jtiId"
     }
 }
