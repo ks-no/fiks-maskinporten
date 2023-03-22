@@ -1,13 +1,11 @@
 package no.ks.fiks.maskinporten
 
+import jakarta.validation.constraints.NotNull
 import org.springframework.boot.context.properties.ConfigurationProperties
-import org.springframework.boot.context.properties.ConstructorBinding
 import org.springframework.validation.annotation.Validated
-import javax.validation.constraints.NotNull
 
 internal const val DEFAULT_SECONDS_LEFT_BEFORE_EXPIRATION = 10
 
-@ConstructorBinding
 @ConfigurationProperties(prefix = "maskinporten")
 @Validated
 data class MaskinportenProperties(

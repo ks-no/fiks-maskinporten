@@ -7,12 +7,12 @@
     <parent>
         <groupId>no.ks.fiks.pom</groupId>
         <artifactId>fiks-ekstern-kotlin-superpom</artifactId>
-        <version>1.0.20</version>
+        <version>1.0.21</version>
     </parent>
 
     <groupId>no.ks.fiks</groupId>
     <artifactId>maskinporten</artifactId>
-    <version>2.2.1-SNAPSHOT</version>
+    <version>3.0.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>${project.artifactId}</name>
     <description>${project.artifactId}</description>
@@ -30,20 +30,18 @@
     </scm>
 
     <properties>
-        <maven.compiler.target>11</maven.compiler.target>
-        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <maven.compiler.source>17</maven.compiler.source>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <maven-deploy-plugin.version>2.8.2</maven-deploy-plugin.version>
-        <maven-surefire-plugin.version>3.0.0-M9</maven-surefire-plugin.version>
 
         <nimbus-jose-jwt.version>9.31</nimbus-jose-jwt.version>
-        <virksomhetssertifikat.version>3.0.2</virksomhetssertifikat.version>
+        <virksomhetssertifikat.version>4.0.0</virksomhetssertifikat.version>
         <expiringmap.version>0.5.10</expiringmap.version>
         <mockserver.version>5.15.0</mockserver.version>
         <lang-tag.version>1.7</lang-tag.version>
         <oauth2-oidc-sdk.version>10.7</oauth2-oidc-sdk.version>
-        <hibernate-validator.version>6.2.3.Final</hibernate-validator.version>
         <apache-httpclient.version>5.2.1</apache-httpclient.version>
 
         <junit.version>5.9.2</junit.version>
@@ -78,12 +76,6 @@
                 <artifactId>maskinporten-client</artifactId>
                 <version>${project.version}</version>
             </dependency>
-            <dependency>
-                <groupId>org.hibernate</groupId>
-                <artifactId>hibernate-validator</artifactId>
-                <version>${hibernate-validator.version}</version>
-            </dependency>
-
             <dependency>
                 <groupId>org.apache.httpcomponents.client5</groupId>
                 <artifactId>httpclient5</artifactId>
@@ -179,7 +171,6 @@
         <plugins>
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>${maven-surefire-plugin.version}</version>
             </plugin>
             <plugin>
                 <artifactId>maven-source-plugin</artifactId>
