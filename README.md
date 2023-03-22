@@ -12,6 +12,18 @@ Mottatte access-token blir lagret i en cache og vil bli gjenbrukt frem til de ut
 Dette er nyttig dersom det gjøres en forespørsel rett før tokenet utløper og det er fare for at tokenet blir ugyldig før forespørselen sendes. 
 Konfigurasjon gjøres ved initiering av klienten og styres i feltet "numberOfSecondsLeftBeforeExpire".
 
+## Versjoner
+
+| Versjon | Java baseline | Spring Boot versjon | Status      | 
+|---------|---------------|---------------------|-------------|
+| 3.x     | Java 17       | 3.X                 | Aktiv       | 
+| 2.X     | Java 11       | 2.X                 | Vedlikehold |
+
+### Status
+- **Aktiv**: versjon som aktivt utvikles og holdes oppdatert mht. avhengigheter
+- **Vedlikehold**: kun kritiske feil vil bli adressert
+
+
 ## Maven koordinater
 ```xml
         <dependency>
