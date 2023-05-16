@@ -2,7 +2,6 @@ package no.ks.fiks.maskinporten
 
 import com.nimbusds.jose.*
 import com.nimbusds.jose.crypto.RSASSASigner
-import com.nimbusds.jose.util.Base64
 import com.nimbusds.jose.util.JSONObjectUtils
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
@@ -33,16 +32,24 @@ import java.util.concurrent.TimeUnit
 
 private val log = mu.KotlinLogging.logger { }
 
+private const val GRANT_TYPE = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+private const val CLAIM_SCOPE = "scope"
+private const val CLAIM_CONSUMER_ORG = "consumer_org"
+private const val CLAIM_RESOURCE = "resource"
+private const val CLAIM_PID = "pid"
+private const val MDC_JTIID = "jtiId"
+
 private fun scopesToCollection(vararg scopes: String): Collection<String> {
     return scopes.toList()
 }
 
-class Maskinportenklient(privateKey: PrivateKey, certificate: X509Certificate, private val properties: MaskinportenklientProperties) :
+class Maskinportenklient(privateKey: PrivateKey, jwsHeaderProvider: JWSHeaderProvider, private val properties: MaskinportenklientProperties) :
     MaskinportenklientOperations {
     private val jwsHeader: JWSHeader
     private val signer: JWSSigner
     private val map: ExpiringMap<AccessTokenRequest, String>
 
+    @Deprecated("Use JWSHeaderProvider constructor")
     constructor(
         keyStore: KeyStore,
         privateKeyAlias: String?,
@@ -54,10 +61,19 @@ class Maskinportenklient(privateKey: PrivateKey, certificate: X509Certificate, p
         properties
     )
 
+    @Deprecated("Use JWSHeaderProvider constructor")
+    constructor(
+        privateKey: PrivateKey,
+        certificate: X509Certificate,
+        properties: MaskinportenklientProperties
+    ) : this(
+        privateKey,
+        VirksomhetssertifikatJWSHeaderProvider(certificate),
+        properties
+    )
+
     init {
-        jwsHeader = JWSHeader.Builder(JWSAlgorithm.RS256)
-            .x509CertChain(listOf(Base64.encode(certificate.encoded)))
-            .build()
+        jwsHeader = jwsHeaderProvider.buildJWSHeader()
         signer = RSASSASigner(privateKey)
         map = ExpiringMap.builder()
             .variableExpiration()
@@ -271,11 +287,27 @@ class Maskinportenklient(privateKey: PrivateKey, certificate: X509Certificate, p
     }
 
     companion object {
-        const val GRANT_TYPE = "urn:ietf:params:oauth:grant-type:jwt-bearer"
-        const val CLAIM_SCOPE = "scope"
-        const val CLAIM_CONSUMER_ORG = "consumer_org"
-        const val CLAIM_RESOURCE = "resource"
-        const val CLAIM_PID = "pid"
-        const val MDC_JTIID = "jtiId"
+        @JvmStatic
+        fun builder() = MaskinportenklientBuilder()
     }
+}
+
+class MaskinportenklientBuilder {
+    private var privateKey: PrivateKey? = null
+    private var jwsHeaderProvider: JWSHeaderProvider? = null
+    private var properties: MaskinportenklientProperties? = null
+
+    fun withPrivateKey(privateKey: PrivateKey) = this.also { this.privateKey = privateKey }
+
+    fun withProperties(properties: MaskinportenklientProperties) = this.also { this.properties = properties }
+
+    fun usingVirksomhetssertifikat(certificate: X509Certificate) = this.also { this.jwsHeaderProvider = VirksomhetssertifikatJWSHeaderProvider(certificate) }
+
+    fun usingAsymmetricKey(keyId: String) = this.also { this.jwsHeaderProvider = AsymmetricKeyJWSHeaderProvider(keyId) }
+
+    fun build() : Maskinportenklient = Maskinportenklient(
+        privateKey ?: throw IllegalArgumentException("""The "privateKey" property can not be null"""),
+        jwsHeaderProvider ?: throw IllegalArgumentException("""Must configure client to use either virksomhetssertifikat or asymmetric key"""),
+        properties ?: throw IllegalArgumentException("""The "properties" property can not be null"""),
+    )
 }

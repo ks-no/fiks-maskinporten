@@ -46,6 +46,7 @@ import java.security.interfaces.RSAPublicKey;
 import java.text.ParseException;
 import java.time.Clock;
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockserver.model.HttpClassCallback.callback;
@@ -59,10 +60,11 @@ class MaskinportenklientTest {
 
     private static final String SCOPE = "provider:scope";
 
+    private static final String JWT_BEARER_GRANT = "urn:ietf:params:oauth:grant-type:jwt-bearer";
+
     public static final class OidcMockExpectation implements ExpectationResponseCallback {
 
         private final static ObjectMapper MAPPER = new ObjectMapper().findAndRegisterModules();
-        private final KeyPair keyPair;
         private final RSAKey jwkKey;
         private final RSASSASigner signer;
 
@@ -70,7 +72,7 @@ class MaskinportenklientTest {
             try {
                 final KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
                 keyPairGenerator.initialize(2048);
-                keyPair = keyPairGenerator.generateKeyPair();
+                KeyPair keyPair = keyPairGenerator.generateKeyPair();
                 jwkKey = new RSAKey.Builder((RSAPublicKey) keyPair.getPublic())
                         .privateKey((RSAPrivateKey) keyPair.getPrivate())
                         .keyID(UUID.randomUUID().toString())
@@ -146,7 +148,7 @@ class MaskinportenklientTest {
                             .withPath("/token")
                             .withBody(
                                     params(
-                                            param("grant_type", Maskinportenklient.GRANT_TYPE)
+                                            param("grant_type", JWT_BEARER_GRANT)
                                     )
                             )
             ).respond(callback().withCallbackClass(OidcMockExpectation.class));
@@ -167,7 +169,7 @@ class MaskinportenklientTest {
                             .withPath("/token")
                             .withBody(
                                     params(
-                                            param("grant_type", Maskinportenklient.GRANT_TYPE)
+                                            param("grant_type", JWT_BEARER_GRANT)
                                     )
                             )
             ).respond(callback().withCallbackClass(OidcMockExpectation.class));
@@ -197,7 +199,7 @@ class MaskinportenklientTest {
                             .withPath("/token")
                             .withBody(
                                     params(
-                                            param("grant_type", Maskinportenklient.GRANT_TYPE)
+                                            param("grant_type", JWT_BEARER_GRANT)
                                     )
                             ),
                     Times.exactly(1)).respond(callback().withCallbackClass(OidcMockExpectation.class));
@@ -219,7 +221,7 @@ class MaskinportenklientTest {
                                     .withPath("/token")
                                     .withBody(
                                             params(
-                                                    param("grant_type", Maskinportenklient.GRANT_TYPE)
+                                                    param("grant_type", JWT_BEARER_GRANT)
                                             )
                                     ),
                             Times.exactly(1))
@@ -258,7 +260,7 @@ class MaskinportenklientTest {
                             .withPath("/token")
                             .withBody(
                                     params(
-                                            param("grant_type", Maskinportenklient.GRANT_TYPE)
+                                            param("grant_type", JWT_BEARER_GRANT)
                                     )
                             )
             ).respond(response().withStatusCode(HttpStatusCode.FORBIDDEN_403.code())
@@ -282,7 +284,7 @@ class MaskinportenklientTest {
                             .withPath("/token")
                             .withBody(
                                     params(
-                                            param("grant_type", Maskinportenklient.GRANT_TYPE)
+                                            param("grant_type", JWT_BEARER_GRANT)
                                     )
                             )
             ).respond(callback().withCallbackClass(OidcMockExpectation.class));
@@ -304,7 +306,7 @@ class MaskinportenklientTest {
                             .withPath("/token")
                             .withBody(
                                     params(
-                                            param("grant_type", Maskinportenklient.GRANT_TYPE)
+                                            param("grant_type", JWT_BEARER_GRANT)
                                     )
                             )
             ).respond(callback().withCallbackClass(OidcMockExpectation.class));
@@ -330,7 +332,7 @@ class MaskinportenklientTest {
                             .withPath("/token")
                             .withBody(
                                     params(
-                                            param("grant_type", Maskinportenklient.GRANT_TYPE)
+                                            param("grant_type", JWT_BEARER_GRANT)
                                     )
                             )
             ).respond(callback().withCallbackClass(OidcMockExpectation.class));
@@ -368,11 +370,17 @@ class MaskinportenklientTest {
     }
 
     private Maskinportenklient createMaskinportenklient(final VirksomhetSertifikater.KsVirksomhetSertifikatStore authKeyStore, final MaskinportenklientProperties maskinportenklientProperties) {
-        try {
-            return new Maskinportenklient(authKeyStore.getPrivateKey(), authKeyStore.getCertificate(), maskinportenklientProperties);
-        } catch (Exception e) {
-            throw new IllegalStateException("Feil under lesing av keystore", e);
+        MaskinportenklientBuilder builder = Maskinportenklient.builder()
+                .withPrivateKey(authKeyStore.getPrivateKey())
+                .withProperties(maskinportenklientProperties);
+
+        if (ThreadLocalRandom.current().nextBoolean()) {
+            builder.usingAsymmetricKey(UUID.randomUUID().toString());
+        } else {
+            builder.usingVirksomhetssertifikat(authKeyStore.getCertificate());
         }
+
+        return builder.build();
     }
 
 
