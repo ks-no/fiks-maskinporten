@@ -24,6 +24,7 @@ import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.apache.hc.core5.http.NameValuePair;
 import org.apache.hc.core5.net.WWWFormCodec;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -374,11 +375,15 @@ class MaskinportenklientTest {
                 .withPrivateKey(authKeyStore.getPrivateKey())
                 .withProperties(maskinportenklientProperties);
 
-        if (ThreadLocalRandom.current().nextBoolean()) {
-            builder.usingAsymmetricKey(UUID.randomUUID().toString());
-        } else {
-            builder.usingVirksomhetssertifikat(authKeyStore.getCertificate());
+        int random = ThreadLocalRandom.current().nextInt(0, 3);
+        switch (random) {
+            case 0 -> builder.usingAsymmetricKey(UUID.randomUUID().toString());
+            case 1 -> builder.usingVirksomhetssertifikat(authKeyStore.getCertificate());
+            default -> builder.usingJwsHeaderProvider(() -> new JWSHeader.Builder(JWSAlgorithm.RS256)
+                    .keyID(UUID.randomUUID().toString())
+                    .build());
         }
+
 
         return builder.build();
     }

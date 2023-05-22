@@ -36,15 +36,41 @@ class MaskinportenklientBuilderTest {
         assertThat(ex.getMessage()).isEqualTo("The \"properties\" property can not be null");
     }
 
-    @DisplayName("Should be able to build valid client")
+    @DisplayName("Should be able to build client with asymmetric key")
     @Test
-    void testValid() {
+    void testValidAymmetricKey() {
         PrivateKey privateKey = mock(PrivateKey.class);
         when(privateKey.getAlgorithm()).thenReturn("RSA");
 
         assertDoesNotThrow(() -> Maskinportenklient.builder()
                 .withPrivateKey(privateKey)
                 .usingAsymmetricKey(UUID.randomUUID().toString())
+                .withProperties(mock(MaskinportenklientProperties.class))
+                .build());
+    }
+
+    @DisplayName("Should be able to build client with virksomhetssertifikat")
+    @Test
+    void testValidVirksomhetssertifikat() {
+        PrivateKey privateKey = mock(PrivateKey.class);
+        when(privateKey.getAlgorithm()).thenReturn("RSA");
+
+        assertDoesNotThrow(() -> Maskinportenklient.builder()
+                .withPrivateKey(privateKey)
+                .usingVirksomhetssertifikat(mock())
+                .withProperties(mock(MaskinportenklientProperties.class))
+                .build());
+    }
+
+    @DisplayName("Should be able to build client with custom header provider")
+    @Test
+    void testValidCustomProvider() {
+        PrivateKey privateKey = mock(PrivateKey.class);
+        when(privateKey.getAlgorithm()).thenReturn("RSA");
+
+        assertDoesNotThrow(() -> Maskinportenklient.builder()
+                .withPrivateKey(privateKey)
+                .usingJwsHeaderProvider(mock())
                 .withProperties(mock(MaskinportenklientProperties.class))
                 .build());
     }

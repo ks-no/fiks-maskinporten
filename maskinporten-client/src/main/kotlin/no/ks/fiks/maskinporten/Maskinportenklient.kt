@@ -43,13 +43,16 @@ private fun scopesToCollection(vararg scopes: String): Collection<String> {
     return scopes.toList()
 }
 
-class Maskinportenklient(privateKey: PrivateKey, jwsHeaderProvider: JWSHeaderProvider, private val properties: MaskinportenklientProperties) :
-    MaskinportenklientOperations {
+class Maskinportenklient(
+    privateKey: PrivateKey,
+    jwsHeaderProvider: JWSHeaderProvider,
+    private val properties: MaskinportenklientProperties
+) : MaskinportenklientOperations {
     private val jwsHeader: JWSHeader
     private val signer: JWSSigner
     private val map: ExpiringMap<AccessTokenRequest, String>
 
-    @Deprecated("Use JWSHeaderProvider constructor")
+    @Deprecated("Use MaskinportenklientBuilder")
     constructor(
         keyStore: KeyStore,
         privateKeyAlias: String?,
@@ -61,7 +64,7 @@ class Maskinportenklient(privateKey: PrivateKey, jwsHeaderProvider: JWSHeaderPro
         properties
     )
 
-    @Deprecated("Use JWSHeaderProvider constructor")
+    @Deprecated("Use MaskinportenklientBuilder")
     constructor(
         privateKey: PrivateKey,
         certificate: X509Certificate,
@@ -301,13 +304,24 @@ class MaskinportenklientBuilder {
 
     fun withProperties(properties: MaskinportenklientProperties) = this.also { this.properties = properties }
 
-    fun usingVirksomhetssertifikat(certificate: X509Certificate) = this.also { this.jwsHeaderProvider = VirksomhetssertifikatJWSHeaderProvider(certificate) }
+    fun usingVirksomhetssertifikat(certificate: X509Certificate) = this.also {
+        if (this.jwsHeaderProvider != null) log.warn { "Overriding already set jwsHeaderProvider with virksomhetssertifikat" }
+        this.jwsHeaderProvider = VirksomhetssertifikatJWSHeaderProvider(certificate)
+    }
 
-    fun usingAsymmetricKey(keyId: String) = this.also { this.jwsHeaderProvider = AsymmetricKeyJWSHeaderProvider(keyId) }
+    fun usingAsymmetricKey(keyId: String) = this.also {
+        if (this.jwsHeaderProvider != null) log.warn { "Overriding already set jwsHeaderProvider with asymmetric key" }
+        this.jwsHeaderProvider = AsymmetricKeyJWSHeaderProvider(keyId)
+    }
+
+    fun usingJwsHeaderProvider(jwsHeaderProvider: JWSHeaderProvider) = this.also {
+        if (this.jwsHeaderProvider != null) log.warn { "Overriding already set jwsHeaderProvider with custom provider" }
+        this.jwsHeaderProvider = jwsHeaderProvider
+    }
 
     fun build() : Maskinportenklient = Maskinportenklient(
         privateKey ?: throw IllegalArgumentException("""The "privateKey" property can not be null"""),
-        jwsHeaderProvider ?: throw IllegalArgumentException("""Must configure client to use either virksomhetssertifikat or asymmetric key"""),
+        jwsHeaderProvider ?: throw IllegalArgumentException("""Must configure client to use either virksomhetssertifikat, asymmetric key or custom JWSHeaderProvider"""),
         properties ?: throw IllegalArgumentException("""The "properties" property can not be null"""),
     )
 }
