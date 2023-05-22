@@ -220,10 +220,10 @@ class Maskinportenklient(
                         val responseCode = classicHttpResponse.code
                         log.debug { "Access token response received in ${System.currentTimeMillis() - startTime} ms with status $responseCode" }
                         return if (HttpStatus.SC_OK == responseCode) {
-                            classicHttpResponse.entity.content?.use { contentStream -> contentStream.readCompletelyAsString() }
+                            classicHttpResponse.entity.content?.use { contentStream -> contentStream.bufferedReader().use { it.readText() } }
                         } else {
                             val errorFromMaskinporten: String = classicHttpResponse.entity.content.use { errorContentStream ->
-                                errorContentStream.readCompletelyAsString()
+                                errorContentStream.bufferedReader().use { it.readText() }
                             }
                             log.warn { "Failed to get token: $errorFromMaskinporten" }
                             val exceptionMessage = "Http response code: $responseCode, url: '$tokenEndpointUrlString', message: '$errorFromMaskinporten'"
@@ -234,14 +234,6 @@ class Maskinportenklient(
                             }
                         }
                     }
-
-                    @Throws(IOException::class)
-                    private fun InputStream.readCompletelyAsString() = InputStreamReader(this).use { isr ->
-                        BufferedReader(isr).use { br ->
-                            br.lineSequence().joinToString("\n")
-                        }
-                    }
-
                 })
             }
         }
