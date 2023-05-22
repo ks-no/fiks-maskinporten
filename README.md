@@ -153,7 +153,7 @@ Autokonfigurasjon av maskinporten for Spring Boot.
 ```
 
 ## Konfigurasjon - application.yaml
-```json
+```yaml
 virksomhetsertifikat.sertifikater:
 - sertifikat-type: AUTH
   keystore-password: <KEYSTORE_PASSWORD>
