@@ -3,7 +3,6 @@ package no.ks.fiks.maskinporten;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.security.KeyFactory;
 import java.security.PrivateKey;
 import java.util.UUID;
 
@@ -34,6 +33,38 @@ class MaskinportenklientBuilderTest {
     void testPropertiesRequired() {
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> Maskinportenklient.builder().withPrivateKey(mock(PrivateKey.class)).usingAsymmetricKey(UUID.randomUUID().toString()).build());
         assertThat(ex.getMessage()).isEqualTo("The \"properties\" property can not be null");
+    }
+
+    @DisplayName("An exception should be thrown if trying to use virksomhetssertifikat when key type is already set")
+    @Test
+    void testVirksomhetssertifikatAlreadySet() {
+        IllegalArgumentException ex1 = assertThrows(IllegalArgumentException.class, () -> Maskinportenklient.builder()
+                .usingVirksomhetssertifikat(mock())
+                .usingVirksomhetssertifikat(mock())
+                .build());
+        assertThat(ex1.getMessage()).isEqualTo("Can not configure client with virksomhetssertifikat or asymmetric key more than once");
+
+        IllegalArgumentException ex2 = assertThrows(IllegalArgumentException.class, () -> Maskinportenklient.builder()
+                .usingAsymmetricKey(UUID.randomUUID().toString())
+                .usingVirksomhetssertifikat(mock())
+                .build());
+        assertThat(ex2.getMessage()).isEqualTo("Can not configure client with virksomhetssertifikat or asymmetric key more than once");
+    }
+
+    @DisplayName("An exception should be thrown if trying to use asymmetric key when key type is already set")
+    @Test
+    void testAsymmetricKeyAlreadySet() {
+        IllegalArgumentException ex1 = assertThrows(IllegalArgumentException.class, () -> Maskinportenklient.builder()
+                .usingAsymmetricKey(UUID.randomUUID().toString())
+                .usingAsymmetricKey(UUID.randomUUID().toString())
+                .build());
+        assertThat(ex1.getMessage()).isEqualTo("Can not configure client with virksomhetssertifikat or asymmetric key more than once");
+
+        IllegalArgumentException ex2 = assertThrows(IllegalArgumentException.class, () -> Maskinportenklient.builder()
+                .usingVirksomhetssertifikat(mock())
+                .usingAsymmetricKey(UUID.randomUUID().toString())
+                .build());
+        assertThat(ex2.getMessage()).isEqualTo("Can not configure client with virksomhetssertifikat or asymmetric key more than once");
     }
 
     @DisplayName("Should be able to build valid client")

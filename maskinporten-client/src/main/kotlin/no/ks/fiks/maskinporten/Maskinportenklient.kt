@@ -301,9 +301,15 @@ class MaskinportenklientBuilder {
 
     fun withProperties(properties: MaskinportenklientProperties) = this.also { this.properties = properties }
 
-    fun usingVirksomhetssertifikat(certificate: X509Certificate) = this.also { this.jwsHeaderProvider = VirksomhetssertifikatJWSHeaderProvider(certificate) }
+    fun usingVirksomhetssertifikat(certificate: X509Certificate) = this.also {
+        if (this.jwsHeaderProvider != null) throw throw IllegalArgumentException("""Can not configure client with virksomhetssertifikat or asymmetric key more than once""")
+        this.jwsHeaderProvider = VirksomhetssertifikatJWSHeaderProvider(certificate)
+    }
 
-    fun usingAsymmetricKey(keyId: String) = this.also { this.jwsHeaderProvider = AsymmetricKeyJWSHeaderProvider(keyId) }
+    fun usingAsymmetricKey(keyId: String) = this.also {
+        if (this.jwsHeaderProvider != null) throw throw IllegalArgumentException("""Can not configure client with virksomhetssertifikat or asymmetric key more than once""")
+        this.jwsHeaderProvider = AsymmetricKeyJWSHeaderProvider(keyId)
+    }
 
     fun build() : Maskinportenklient = Maskinportenklient(
         privateKey ?: throw IllegalArgumentException("""The "privateKey" property can not be null"""),
