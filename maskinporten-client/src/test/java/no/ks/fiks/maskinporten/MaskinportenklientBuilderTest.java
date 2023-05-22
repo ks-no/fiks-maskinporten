@@ -3,7 +3,6 @@ package no.ks.fiks.maskinporten;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.security.KeyFactory;
 import java.security.PrivateKey;
 import java.util.UUID;
 
@@ -26,7 +25,7 @@ class MaskinportenklientBuilderTest {
     @Test
     void testKeyTypeRequired() {
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> Maskinportenklient.builder().withPrivateKey(mock(PrivateKey.class)).build());
-        assertThat(ex.getMessage()).isEqualTo("Must configure client to use either virksomhetssertifikat or asymmetric key");
+        assertThat(ex.getMessage()).isEqualTo("Must configure client to use either virksomhetssertifikat, asymmetric key or custom JWSHeaderProvider");
     }
 
     @DisplayName("An exception should be thrown if properties is not set")
