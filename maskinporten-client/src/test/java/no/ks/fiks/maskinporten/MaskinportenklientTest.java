@@ -24,7 +24,6 @@ import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.apache.hc.core5.http.NameValuePair;
 import org.apache.hc.core5.net.WWWFormCodec;
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -69,6 +68,8 @@ class MaskinportenklientTest {
         private final RSAKey jwkKey;
         private final RSASSASigner signer;
 
+        static String previousJwt = null;
+
         public OidcMockExpectation() {
             try {
                 final KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
@@ -109,10 +110,12 @@ class MaskinportenklientTest {
             Optional.ofNullable(resource).ifPresent(it -> claimsSetBuilder.claim("aud", resource));
             Optional.ofNullable(pid).ifPresent(it -> claimsSetBuilder.claim("pid", pid));
             ObjectNode objectNode = MAPPER.createObjectNode();
-            objectNode.put("access_token", createJwt(claimsSetBuilder.build()));
+            String jwt = createJwt(claimsSetBuilder.build());
+            objectNode.put("access_token", jwt);
             objectNode.put("expires_in", 120);
             objectNode.put("scope", scope);
             try {
+                previousJwt = jwt;
                 return MAPPER.writeValueAsString(objectNode);
             } catch (JsonProcessingException e) {
                 throw new IllegalStateException("Kunne ikke skrive JSON", e);
@@ -155,7 +158,7 @@ class MaskinportenklientTest {
             ).respond(callback().withCallbackClass(OidcMockExpectation.class));
             final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()));
             final String accessToken = maskinportenklient.getAccessToken(SCOPE);
-            assertThat(accessToken).isNotBlank();
+            assertThat(accessToken).isEqualTo(OidcMockExpectation.previousJwt);
         }
     }
 
@@ -177,9 +180,9 @@ class MaskinportenklientTest {
 
             try (CloseableHttpClient httpClient = HttpClientBuilder.create().disableAutomaticRetries().disableRedirectHandling().disableAuthCaching().build()) {
                 final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()), httpClient);
-                assertThat(maskinportenklient.getAccessToken(SCOPE)).isNotBlank();
+                assertThat(maskinportenklient.getAccessToken(SCOPE)).isEqualTo(OidcMockExpectation.previousJwt);
                 // httpClient should not be closed yet, have another go
-                assertThat(maskinportenklient.getAccessToken(SCOPE)).isNotBlank();
+                assertThat(maskinportenklient.getAccessToken(SCOPE)).isEqualTo(OidcMockExpectation.previousJwt);
 
             } catch (IOException e) {
                 fail("Could not get token using provided client", e);
@@ -206,7 +209,7 @@ class MaskinportenklientTest {
                     Times.exactly(1)).respond(callback().withCallbackClass(OidcMockExpectation.class));
             final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()));
             final String accessToken = maskinportenklient.getAccessToken(SCOPE);
-            assertThat(accessToken).isNotBlank();
+            assertThat(accessToken).isEqualTo(OidcMockExpectation.previousJwt);
             assertThat(maskinportenklient.getAccessToken(SCOPE)).isEqualTo(accessToken);
         }
     }
@@ -291,7 +294,7 @@ class MaskinportenklientTest {
             ).respond(callback().withCallbackClass(OidcMockExpectation.class));
             final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()));
             final String accessToken = maskinportenklient.getDelegatedAccessToken(consumerOrg, SCOPE);
-            assertThat(accessToken).isNotBlank();
+            assertThat(accessToken).isEqualTo(OidcMockExpectation.previousJwt);
         }
     }
 
@@ -314,7 +317,7 @@ class MaskinportenklientTest {
             final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()));
 
             final String accessToken = maskinportenklient.getAccessTokenWithAudience(audience, SCOPE);
-            assertThat(accessToken).isNotBlank();
+            assertThat(accessToken).isEqualTo(OidcMockExpectation.previousJwt);
             SignedJWT jwt = SignedJWT.parse(accessToken);
             assertThat(jwt.getJWTClaimsSet().getAudience()).isEqualTo(Collections.singletonList(audience));
         }
@@ -341,7 +344,7 @@ class MaskinportenklientTest {
 
             final AccessTokenRequest request = new AccessTokenRequestBuilder().scope(SCOPE).audience(audience).pid(pid).build();
             final String accessToken = maskinportenklient.getAccessToken(request);
-            assertThat(accessToken).isNotBlank();
+            assertThat(accessToken).isEqualTo(OidcMockExpectation.previousJwt);
             SignedJWT jwt = SignedJWT.parse(accessToken);
             assertThat(jwt.getJWTClaimsSet().getClaim("pid")).isEqualTo(pid);
         }
