@@ -46,6 +46,7 @@ import java.security.interfaces.RSAPublicKey;
 import java.text.ParseException;
 import java.time.Clock;
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockserver.model.HttpClassCallback.callback;
@@ -59,18 +60,21 @@ class MaskinportenklientTest {
 
     private static final String SCOPE = "provider:scope";
 
+    private static final String JWT_BEARER_GRANT = "urn:ietf:params:oauth:grant-type:jwt-bearer";
+
     public static final class OidcMockExpectation implements ExpectationResponseCallback {
 
         private final static ObjectMapper MAPPER = new ObjectMapper().findAndRegisterModules();
-        private final KeyPair keyPair;
         private final RSAKey jwkKey;
         private final RSASSASigner signer;
+
+        static String previousJwt = null;
 
         public OidcMockExpectation() {
             try {
                 final KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
                 keyPairGenerator.initialize(2048);
-                keyPair = keyPairGenerator.generateKeyPair();
+                KeyPair keyPair = keyPairGenerator.generateKeyPair();
                 jwkKey = new RSAKey.Builder((RSAPublicKey) keyPair.getPublic())
                         .privateKey((RSAPrivateKey) keyPair.getPrivate())
                         .keyID(UUID.randomUUID().toString())
@@ -106,10 +110,12 @@ class MaskinportenklientTest {
             Optional.ofNullable(resource).ifPresent(it -> claimsSetBuilder.claim("aud", resource));
             Optional.ofNullable(pid).ifPresent(it -> claimsSetBuilder.claim("pid", pid));
             ObjectNode objectNode = MAPPER.createObjectNode();
-            objectNode.put("access_token", createJwt(claimsSetBuilder.build()));
+            String jwt = createJwt(claimsSetBuilder.build());
+            objectNode.put("access_token", jwt);
             objectNode.put("expires_in", 120);
             objectNode.put("scope", scope);
             try {
+                previousJwt = jwt;
                 return MAPPER.writeValueAsString(objectNode);
             } catch (JsonProcessingException e) {
                 throw new IllegalStateException("Kunne ikke skrive JSON", e);
@@ -146,13 +152,13 @@ class MaskinportenklientTest {
                             .withPath("/token")
                             .withBody(
                                     params(
-                                            param("grant_type", Maskinportenklient.GRANT_TYPE)
+                                            param("grant_type", JWT_BEARER_GRANT)
                                     )
                             )
             ).respond(callback().withCallbackClass(OidcMockExpectation.class));
             final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()));
             final String accessToken = maskinportenklient.getAccessToken(SCOPE);
-            assertThat(accessToken).isNotBlank();
+            assertThat(accessToken).isEqualTo(OidcMockExpectation.previousJwt);
         }
     }
 
@@ -167,16 +173,16 @@ class MaskinportenklientTest {
                             .withPath("/token")
                             .withBody(
                                     params(
-                                            param("grant_type", Maskinportenklient.GRANT_TYPE)
+                                            param("grant_type", JWT_BEARER_GRANT)
                                     )
                             )
             ).respond(callback().withCallbackClass(OidcMockExpectation.class));
 
             try (CloseableHttpClient httpClient = HttpClientBuilder.create().disableAutomaticRetries().disableRedirectHandling().disableAuthCaching().build()) {
                 final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()), httpClient);
-                assertThat(maskinportenklient.getAccessToken(SCOPE)).isNotBlank();
+                assertThat(maskinportenklient.getAccessToken(SCOPE)).isEqualTo(OidcMockExpectation.previousJwt);
                 // httpClient should not be closed yet, have another go
-                assertThat(maskinportenklient.getAccessToken(SCOPE)).isNotBlank();
+                assertThat(maskinportenklient.getAccessToken(SCOPE)).isEqualTo(OidcMockExpectation.previousJwt);
 
             } catch (IOException e) {
                 fail("Could not get token using provided client", e);
@@ -197,13 +203,13 @@ class MaskinportenklientTest {
                             .withPath("/token")
                             .withBody(
                                     params(
-                                            param("grant_type", Maskinportenklient.GRANT_TYPE)
+                                            param("grant_type", JWT_BEARER_GRANT)
                                     )
                             ),
                     Times.exactly(1)).respond(callback().withCallbackClass(OidcMockExpectation.class));
             final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()));
             final String accessToken = maskinportenklient.getAccessToken(SCOPE);
-            assertThat(accessToken).isNotBlank();
+            assertThat(accessToken).isEqualTo(OidcMockExpectation.previousJwt);
             assertThat(maskinportenklient.getAccessToken(SCOPE)).isEqualTo(accessToken);
         }
     }
@@ -219,7 +225,7 @@ class MaskinportenklientTest {
                                     .withPath("/token")
                                     .withBody(
                                             params(
-                                                    param("grant_type", Maskinportenklient.GRANT_TYPE)
+                                                    param("grant_type", JWT_BEARER_GRANT)
                                             )
                                     ),
                             Times.exactly(1))
@@ -258,7 +264,7 @@ class MaskinportenklientTest {
                             .withPath("/token")
                             .withBody(
                                     params(
-                                            param("grant_type", Maskinportenklient.GRANT_TYPE)
+                                            param("grant_type", JWT_BEARER_GRANT)
                                     )
                             )
             ).respond(response().withStatusCode(HttpStatusCode.FORBIDDEN_403.code())
@@ -282,13 +288,13 @@ class MaskinportenklientTest {
                             .withPath("/token")
                             .withBody(
                                     params(
-                                            param("grant_type", Maskinportenklient.GRANT_TYPE)
+                                            param("grant_type", JWT_BEARER_GRANT)
                                     )
                             )
             ).respond(callback().withCallbackClass(OidcMockExpectation.class));
             final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()));
             final String accessToken = maskinportenklient.getDelegatedAccessToken(consumerOrg, SCOPE);
-            assertThat(accessToken).isNotBlank();
+            assertThat(accessToken).isEqualTo(OidcMockExpectation.previousJwt);
         }
     }
 
@@ -304,14 +310,14 @@ class MaskinportenklientTest {
                             .withPath("/token")
                             .withBody(
                                     params(
-                                            param("grant_type", Maskinportenklient.GRANT_TYPE)
+                                            param("grant_type", JWT_BEARER_GRANT)
                                     )
                             )
             ).respond(callback().withCallbackClass(OidcMockExpectation.class));
             final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()));
 
             final String accessToken = maskinportenklient.getAccessTokenWithAudience(audience, SCOPE);
-            assertThat(accessToken).isNotBlank();
+            assertThat(accessToken).isEqualTo(OidcMockExpectation.previousJwt);
             SignedJWT jwt = SignedJWT.parse(accessToken);
             assertThat(jwt.getJWTClaimsSet().getAudience()).isEqualTo(Collections.singletonList(audience));
         }
@@ -330,7 +336,7 @@ class MaskinportenklientTest {
                             .withPath("/token")
                             .withBody(
                                     params(
-                                            param("grant_type", Maskinportenklient.GRANT_TYPE)
+                                            param("grant_type", JWT_BEARER_GRANT)
                                     )
                             )
             ).respond(callback().withCallbackClass(OidcMockExpectation.class));
@@ -338,7 +344,7 @@ class MaskinportenklientTest {
 
             final AccessTokenRequest request = new AccessTokenRequestBuilder().scope(SCOPE).audience(audience).pid(pid).build();
             final String accessToken = maskinportenklient.getAccessToken(request);
-            assertThat(accessToken).isNotBlank();
+            assertThat(accessToken).isEqualTo(OidcMockExpectation.previousJwt);
             SignedJWT jwt = SignedJWT.parse(accessToken);
             assertThat(jwt.getJWTClaimsSet().getClaim("pid")).isEqualTo(pid);
         }
@@ -368,11 +374,21 @@ class MaskinportenklientTest {
     }
 
     private Maskinportenklient createMaskinportenklient(final VirksomhetSertifikater.KsVirksomhetSertifikatStore authKeyStore, final MaskinportenklientProperties maskinportenklientProperties) {
-        try {
-            return new Maskinportenklient(authKeyStore.getPrivateKey(), authKeyStore.getCertificate(), maskinportenklientProperties);
-        } catch (Exception e) {
-            throw new IllegalStateException("Feil under lesing av keystore", e);
+        MaskinportenklientBuilder builder = Maskinportenklient.builder()
+                .withPrivateKey(authKeyStore.getPrivateKey())
+                .withProperties(maskinportenklientProperties);
+
+        int random = ThreadLocalRandom.current().nextInt(0, 3);
+        switch (random) {
+            case 0 -> builder.usingAsymmetricKey(UUID.randomUUID().toString());
+            case 1 -> builder.usingVirksomhetssertifikat(authKeyStore.getCertificate());
+            default -> builder.usingJwsHeaderProvider(() -> new JWSHeader.Builder(JWSAlgorithm.RS256)
+                    .keyID(UUID.randomUUID().toString())
+                    .build());
         }
+
+
+        return builder.build();
     }
 
 

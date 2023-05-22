@@ -2,7 +2,6 @@ package no.ks.fiks.maskinporten
 
 import com.nimbusds.jose.*
 import com.nimbusds.jose.crypto.RSASSASigner
-import com.nimbusds.jose.util.Base64
 import com.nimbusds.jose.util.JSONObjectUtils
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
@@ -33,16 +32,27 @@ import java.util.concurrent.TimeUnit
 
 private val log = mu.KotlinLogging.logger { }
 
+private const val GRANT_TYPE = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+private const val CLAIM_SCOPE = "scope"
+private const val CLAIM_CONSUMER_ORG = "consumer_org"
+private const val CLAIM_RESOURCE = "resource"
+private const val CLAIM_PID = "pid"
+private const val MDC_JTIID = "jtiId"
+
 private fun scopesToCollection(vararg scopes: String): Collection<String> {
     return scopes.toList()
 }
 
-class Maskinportenklient(privateKey: PrivateKey, certificate: X509Certificate, private val properties: MaskinportenklientProperties) :
-    MaskinportenklientOperations {
+class Maskinportenklient(
+    privateKey: PrivateKey,
+    jwsHeaderProvider: JWSHeaderProvider,
+    private val properties: MaskinportenklientProperties
+) : MaskinportenklientOperations {
     private val jwsHeader: JWSHeader
     private val signer: JWSSigner
     private val map: ExpiringMap<AccessTokenRequest, String>
 
+    @Deprecated("Use MaskinportenklientBuilder")
     constructor(
         keyStore: KeyStore,
         privateKeyAlias: String?,
@@ -54,10 +64,19 @@ class Maskinportenklient(privateKey: PrivateKey, certificate: X509Certificate, p
         properties
     )
 
+    @Deprecated("Use MaskinportenklientBuilder")
+    constructor(
+        privateKey: PrivateKey,
+        certificate: X509Certificate,
+        properties: MaskinportenklientProperties
+    ) : this(
+        privateKey,
+        VirksomhetssertifikatJWSHeaderProvider(certificate),
+        properties
+    )
+
     init {
-        jwsHeader = JWSHeader.Builder(JWSAlgorithm.RS256)
-            .x509CertChain(listOf(Base64.encode(certificate.encoded)))
-            .build()
+        jwsHeader = jwsHeaderProvider.buildJWSHeader()
         signer = RSASSASigner(privateKey)
         map = ExpiringMap.builder()
             .variableExpiration()
@@ -201,10 +220,10 @@ class Maskinportenklient(privateKey: PrivateKey, certificate: X509Certificate, p
                         val responseCode = classicHttpResponse.code
                         log.debug { "Access token response received in ${System.currentTimeMillis() - startTime} ms with status $responseCode" }
                         return if (HttpStatus.SC_OK == responseCode) {
-                            classicHttpResponse.entity.content?.use { contentStream -> contentStream.readCompletelyAsString() }
+                            classicHttpResponse.entity.content?.use { contentStream -> contentStream.bufferedReader().use { it.readText() } }
                         } else {
                             val errorFromMaskinporten: String = classicHttpResponse.entity.content.use { errorContentStream ->
-                                errorContentStream.readCompletelyAsString()
+                                errorContentStream.bufferedReader().use { it.readText() }
                             }
                             log.warn { "Failed to get token: $errorFromMaskinporten" }
                             val exceptionMessage = "Http response code: $responseCode, url: '$tokenEndpointUrlString', message: '$errorFromMaskinporten'"
@@ -215,14 +234,6 @@ class Maskinportenklient(privateKey: PrivateKey, certificate: X509Certificate, p
                             }
                         }
                     }
-
-                    @Throws(IOException::class)
-                    private fun InputStream.readCompletelyAsString() = InputStreamReader(this).use { isr ->
-                        BufferedReader(isr).use { br ->
-                            br.lineSequence().joinToString("\n")
-                        }
-                    }
-
                 })
             }
         }
@@ -271,11 +282,38 @@ class Maskinportenklient(privateKey: PrivateKey, certificate: X509Certificate, p
     }
 
     companion object {
-        const val GRANT_TYPE = "urn:ietf:params:oauth:grant-type:jwt-bearer"
-        const val CLAIM_SCOPE = "scope"
-        const val CLAIM_CONSUMER_ORG = "consumer_org"
-        const val CLAIM_RESOURCE = "resource"
-        const val CLAIM_PID = "pid"
-        const val MDC_JTIID = "jtiId"
+        @JvmStatic
+        fun builder() = MaskinportenklientBuilder()
     }
+}
+
+class MaskinportenklientBuilder {
+    private var privateKey: PrivateKey? = null
+    private var jwsHeaderProvider: JWSHeaderProvider? = null
+    private var properties: MaskinportenklientProperties? = null
+
+    fun withPrivateKey(privateKey: PrivateKey) = this.also { this.privateKey = privateKey }
+
+    fun withProperties(properties: MaskinportenklientProperties) = this.also { this.properties = properties }
+
+    fun usingVirksomhetssertifikat(certificate: X509Certificate) = this.also {
+        if (this.jwsHeaderProvider != null) log.warn { "Overriding already set jwsHeaderProvider with virksomhetssertifikat" }
+        this.jwsHeaderProvider = VirksomhetssertifikatJWSHeaderProvider(certificate)
+    }
+
+    fun usingAsymmetricKey(keyId: String) = this.also {
+        if (this.jwsHeaderProvider != null) log.warn { "Overriding already set jwsHeaderProvider with asymmetric key" }
+        this.jwsHeaderProvider = AsymmetricKeyJWSHeaderProvider(keyId)
+    }
+
+    fun usingJwsHeaderProvider(jwsHeaderProvider: JWSHeaderProvider) = this.also {
+        if (this.jwsHeaderProvider != null) log.warn { "Overriding already set jwsHeaderProvider with custom provider" }
+        this.jwsHeaderProvider = jwsHeaderProvider
+    }
+
+    fun build() : Maskinportenklient = Maskinportenklient(
+        privateKey ?: throw IllegalArgumentException("""The "privateKey" property can not be null"""),
+        jwsHeaderProvider ?: throw IllegalArgumentException("""Must configure client to use either virksomhetssertifikat, asymmetric key or custom JWSHeaderProvider"""),
+        properties ?: throw IllegalArgumentException("""The "properties" property can not be null"""),
+    )
 }

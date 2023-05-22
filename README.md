@@ -12,6 +12,9 @@ Mottatte access-token blir lagret i en cache og vil bli gjenbrukt frem til de ut
 Dette er nyttig dersom det gjøres en forespørsel rett før tokenet utløper og det er fare for at tokenet blir ugyldig før forespørselen sendes. 
 Konfigurasjon gjøres ved initiering av klienten og styres i feltet "numberOfSecondsLeftBeforeExpire".
 
+## Maskinporten-miljøer
+Digdir vedlikeholder [liste med gyldige verdier for miljøene de tilbyr](https://docs.digdir.no/maskinporten_func_wellknown.html)
+
 ## Versjoner
 
 | Versjon | Java baseline | Spring Boot versjon | Status      | 
@@ -44,21 +47,30 @@ import java.io.IOException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
 import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 
 public class Application {
 
     public static void main(String[] args) throws Exception {
         String keyStoreFilename = "virksomhetssertifikat-auth.p12";
+        String alias = "authentication certificate";
         char[] keyStorePassword = "passord".toCharArray();
         KeyStore keyStore = getKeyStore(keyStoreFilename, keyStorePassword);
 
-        Maskinportenklient maskinporten = new Maskinportenklient(keyStore, "authentication certificate", keyStorePassword, MaskinportenklientProperties.builder()
-                .numberOfSecondsLeftBeforeExpire(10)
-                .issuer("<klient-id-utdelt-av-difi>")
-                .audience("https://ver2.maskinporten.no/")
-                .tokenEndpoint("https://ver2.maskinporten.no/token")
-                .build());
+        Maskinportenklient maskinporten = Maskinportenklient.builder()
+                .withPrivateKey((PrivateKey) keyStore.getKey(alias, keyStorePassword))
+                .withProperties(
+                        MaskinportenklientProperties.builder()
+                                .numberOfSecondsLeftBeforeExpire(10)
+                                .issuer("<klient-id-utdelt-av-difi>")
+                                .audience("https://ver2.maskinporten.no/")
+                                .tokenEndpoint("https://ver2.maskinporten.no/token")
+                                .build()
+                )
+                .usingVirksomhetssertifikat((X509Certificate) keyStore.getCertificate(alias))
+                .build();
 
         String accessToken = maskinporten.getAccessToken("ks:fiks");
         System.out.println("accessToken = " + accessToken);
@@ -72,31 +84,54 @@ public class Application {
 
 }
 ```
-### Bruk egen CloseableHttpClient
-Klienten er basert på Apache HttpClient 5.1.x. Dersom du vil kan du konfigurere denne selv. Da må du selv sørge for å lukke den når klienten ikke skal brukes mer
-```java
-CloseableHttpClient httpClient = ... // 
-Maskinportenklient klient = new Maskinportenklient(keyStore, "authentication certificate", keyStorePassword, MaskinportenklientProperties.builder()
-                .audience("https://ver2.maskinporten.no/")
-                .tokenEndpoint(tokenEndpoint)
-                .issuer("77c0a0ba-d20d-424c-b5dd-f1c63da07fc4")
-                .numberOfSecondsLeftBeforeExpire(10)
-                .providedHttpClient(httpClient)
-                .build())        
-```
 
 ### Kotlin
 ```kotlin
 val keyStore: Keystore = ...
+val alias = "mykey"
+val password = "keypassword"
 val maskinportenklientProperties = MaskinportenklientProperties(
             audience = "https://ver2.maskinporten.no/",
             tokenEndpoint = "https://ver2.maskinporten.no/token",
             issuer = "<klient-id-utdelt-av-difi>",
             numberOfSecondsLeftBeforeExpire = 10)
-val klient = Maskinportenklient(keyStore, "mykey", "keypassword".toCharArray(), maskinportenklientProperties)            
+val klient = Maskinportenklient(keyStore, "mykey", "keypassword".toCharArray(), maskinportenklientProperties)
+val klient = Maskinportenklient.builder()
+    .withPrivateKey(keyStore.getKey(alias, keyStorePassword) as PrivateKey)
+    .withProperties(maskinportenklientProperties)
+    .usingVirksomhetssertifikat(keyStore.getCertificate(alias) as X509Certificate)
+    .build()
 ```
-Digdir vedlikeholder [liste med gyldige verdier for de miljøene de tilbyr](https://docs.digdir.no/maskinporten_func_wellknown.html)
+### Bruk egen CloseableHttpClient
+Klienten er basert på Apache HttpClient 5.1.x. Dersom du vil kan du konfigurere denne selv. Da må du selv sørge for å lukke den når klienten ikke skal brukes mer
+```java
+CloseableHttpClient httpClient = ... // 
+Maskinportenklient maskinporten = Maskinportenklient.builder()
+    .withPrivateKey((PrivateKey) keyStore.getKey(alias, keyStorePassword))
+    .withProperties(
+        MaskinportenklientProperties.builder()
+            .audience("https://ver2.maskinporten.no/")
+            .tokenEndpoint(tokenEndpoint)
+            .issuer("77c0a0ba-d20d-424c-b5dd-f1c63da07fc4")
+            .numberOfSecondsLeftBeforeExpire(10)
+            .providedHttpClient(httpClient)
+            .build()
+    )
+    .usingVirksomhetssertifikat((X509Certificate) keyStore.getCertificate(alias))
+    .build();
+```
 
+### Bruk av asymmetriske nøkler
+Maskinporten har støtte for bruk av asymmetriske nøkler i stedet for virksomhetssertifikat, som beskrevet [her](https://docs.digdir.no/docs/Maskinporten/maskinporten_guide_apikonsument#registrere-klient-som-bruker-egen-n%C3%B8kkel).
+
+Klient-builderen har støtte for at en slik nøkkel kan konfigureres slik:
+```java
+Maskinportenklient.builder()
+        .withPrivateKey(...)
+        .withProperties(...)
+        .usingAsymmetricKey("<asymmetrisk nøkkel>")
+        .build();
+```
 
 # maskinporten-spring-boot-client
 Autokonfigurasjon av maskinporten for Spring Boot.
@@ -118,7 +153,7 @@ Autokonfigurasjon av maskinporten for Spring Boot.
 ```
 
 ## Konfigurasjon - application.yaml
-```json
+```yaml
 virksomhetsertifikat.sertifikater:
 - sertifikat-type: AUTH
   keystore-password: <KEYSTORE_PASSWORD>
