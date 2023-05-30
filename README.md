@@ -153,6 +153,7 @@ Autokonfigurasjon av maskinporten for Spring Boot.
 ```
 
 ## Konfigurasjon - application.yaml
+### Med virksomhetssertifikat
 ```yaml
 virksomhetsertifikat.sertifikater:
 - sertifikat-type: AUTH
@@ -168,4 +169,17 @@ maskinporten:
   issuer: <ISSUER>
   numberOfSecondsLeftBeforeExpire: <NUMBER_OF_SECOUNDS>
 ```
+### Med bruk av asymetrisk nøkkel
+```yaml
+maskinporten:
+  audience: <AUDIENCE>
+  tokenEndpoint: <TOKEN_ENDPOINT>
+  issuer: <ISSUER>
+  numberOfSecondsLeftBeforeExpire: <NUMBER_OF_SECOUNDS>
+  asymmetricKey: <ASYMMETRIC_KEY_ID>
+  privateKey:
+    pemFilePath: <URI OR FILE PATH>
+```   
+
+
 I fra versjon 1.0.16 er det også mulig å oppgi _"consumerOrg"_ dersom man skal opptre på [vegne av en annen aktør (delegering)](https://difi.github.io/felleslosninger/maskinporten_func_delegering.html). Settes i så fall til orgnr til aktør man skal opptre på vegne av. Krever også at oppgitt Maskinporten scope er satt opp til å kreve dette.

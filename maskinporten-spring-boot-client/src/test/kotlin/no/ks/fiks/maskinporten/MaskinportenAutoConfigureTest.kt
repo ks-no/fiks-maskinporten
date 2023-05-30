@@ -9,7 +9,6 @@ import org.assertj.core.api.Assertions.assertThat
 import org.springframework.boot.autoconfigure.AutoConfigurations
 import org.springframework.boot.test.context.runner.ApplicationContextRunner
 import java.math.BigInteger
-import java.security.KeyStore
 import java.security.Principal
 import java.security.PrivateKey
 import java.security.PublicKey
@@ -22,20 +21,14 @@ class MaskinportenAutoConfigureTest : StringSpec() {
 
 
     init {
-        "Autoconfigures Maskinportenklient" {
+        "Autoconfigures Maskinportenklient using virksomhetssertifikat" {
             val issuer = "issuer"
             val audience = "audience"
             val tokenEndpoint = "https://somewhere"
-            val privateKeyName = "privateKey"
 
-            val keyStoreMock = mockk<KeyStore> {
-                every { getKey(privateKeyName, any()) } returns mockPrivateKey
-                every { getCertificate(privateKeyName) } returns mockCertificate
-            }
             val virksomhetSertifikatStore = mockk<VirksomhetSertifikater.KsVirksomhetSertifikatStore> {
-                every { keyStore } returns keyStoreMock
-                every { privateKeyAlias } returns privateKeyName
-                every { privateKeyPassword } returns "privateKeyPassword".toCharArray()
+                every { certificate } returns mockCertificate
+                every { privateKey } returns mockPrivateKey
             }
             val virksomhetSertifikater = mockk<VirksomhetSertifikater> {
                 every { requireAuthKeyStore() } returns virksomhetSertifikatStore
@@ -50,6 +43,46 @@ class MaskinportenAutoConfigureTest : StringSpec() {
                 .withBean(VirksomhetSertifikater::class.java, { virksomhetSertifikater })
                 .run { context ->
                     assertThat(context).hasSingleBean(Maskinportenklient::class.java)
+                }
+        }
+
+        "Autoconfigures Maskinportenklient using asymmetric key and private key" {
+            val issuer = "issuer"
+            val audience = "audience"
+            val tokenEndpoint = "https://somewhere"
+            val asymetricKeyId = "${UUID.randomUUID()}"
+            contextRunner
+                .withPropertyValues(
+                    "debug=true",
+                    "maskinporten.audience=$audience",
+                    "maskinporten.tokenEndpoint=$tokenEndpoint",
+                    "maskinporten.issuer=$issuer",
+                    "maskinporten.asymmetric-key=$asymetricKeyId",
+                    "maskinporten.private-key.pem-file-path=classpath:test-private.pem"
+                )
+                .run { context ->
+                    assertThat(context)
+                        .hasSingleBean(MaskinportenPrivateKeyProvider::class.java)
+                        .hasSingleBean(Maskinportenklient::class.java)
+                }
+        }
+
+        "Configuration fails when trying to create Maskinportenklient with asymmetric key without private key" {
+            val issuer = "issuer"
+            val audience = "audience"
+            val tokenEndpoint = "https://somewhere"
+            val asymetricKeyId = "${UUID.randomUUID()}"
+            contextRunner
+                .withPropertyValues(
+                    "debug=true",
+                    "maskinporten.audience=$audience",
+                    "maskinporten.tokenEndpoint=$tokenEndpoint",
+                    "maskinporten.issuer=$issuer",
+                    "maskinporten.asymmetric-key=$asymetricKeyId"
+                )
+                .run { context ->
+                    assertThat(context)
+                        .hasFailed()
                 }
         }
 
@@ -185,5 +218,6 @@ class MaskinportenAutoConfigureTest : StringSpec() {
             TODO("Not yet implemented")
         }
     }
+
 
 }
