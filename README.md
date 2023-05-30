@@ -177,7 +177,7 @@ maskinporten:
   issuer: <ISSUER>
   numberOfSecondsLeftBeforeExpire: <NUMBER_OF_SECOUNDS>
   asymmetricKey: <ASYMMETRIC_KEY_ID>
-  private-key:
+  privateKey:
     pemFilePath: <URI OR FILE PATH>
 ```   
 
