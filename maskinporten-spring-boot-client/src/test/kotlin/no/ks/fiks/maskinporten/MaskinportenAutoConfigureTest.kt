@@ -7,6 +7,7 @@ import no.ks.fiks.virksomhetsertifikat.VirksomhetSertifikatAutoConfigure
 import no.ks.fiks.virksomhetsertifikat.VirksomhetSertifikater
 import org.assertj.core.api.Assertions.assertThat
 import org.springframework.boot.autoconfigure.AutoConfigurations
+import org.springframework.boot.test.context.FilteredClassLoader
 import org.springframework.boot.test.context.runner.ApplicationContextRunner
 import java.math.BigInteger
 import java.security.Principal
@@ -86,10 +87,17 @@ class MaskinportenAutoConfigureTest : StringSpec() {
                 }
         }
 
-        "Does not autoconfigure if no Virksomhetssertifikater bean exists" {
+        "Fails to autoconfigure if no Virksomhetssertifikater bean exists" {
             contextRunner.run { context ->
                 assertThat(context).hasFailed()
             }
+        }
+
+        "Nothing happens when Virksomhetssertifikater is not on Classpath" {
+            contextRunner.withClassLoader(FilteredClassLoader(VirksomhetSertifikater::class.java))
+                .run { context ->
+                    assertThat(context).doesNotHaveBean(Maskinportenklient::class.java)
+                }
         }
 
         "Fails to autoconfigure if the required configuration properties is not provided" {
