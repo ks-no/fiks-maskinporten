@@ -11,6 +11,11 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Condition
+import org.springframework.context.annotation.ConditionContext
+import org.springframework.context.annotation.Conditional
+import org.springframework.core.env.get
+import org.springframework.core.type.AnnotatedTypeMetadata
 
 @AutoConfiguration
 @EnableConfigurationProperties(MaskinportenProperties::class)
@@ -19,7 +24,9 @@ class MaskinportenAutoConfigure {
     @AutoConfigureAfter(VirksomhetSertifikatAutoConfigure::class)
     @ConditionalOnClass(VirksomhetSertifikater::class)
     inner class MaskinportenUsingVirksomhetSertifikatAutoConfigure {
+
         @ConditionalOnMissingBean
+        @Conditional(MissingAsymmetricKeyConfigurationCondition::class)
         @Bean
         fun getMaskinportenklient(properties: MaskinportenProperties, virksomhetSertifikater: VirksomhetSertifikater): Maskinportenklient {
             val authKeyStore = virksomhetSertifikater.requireAuthKeyStore()
@@ -61,5 +68,10 @@ class MaskinportenAutoConfigure {
     }
 
 
+}
+
+class MissingAsymmetricKeyConfigurationCondition: Condition {
+    override fun matches(context: ConditionContext, metadata: AnnotatedTypeMetadata): Boolean = context.environment["maskinporten.asymmetric-key"]
+        .isNullOrEmpty()
 
 }
