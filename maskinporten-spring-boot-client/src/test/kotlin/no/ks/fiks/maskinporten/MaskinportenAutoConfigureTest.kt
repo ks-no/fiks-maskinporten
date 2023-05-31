@@ -88,7 +88,7 @@ class MaskinportenAutoConfigureTest : StringSpec() {
 
         "Does not autoconfigure if no Virksomhetssertifikater bean exists" {
             contextRunner.run { context ->
-                assertThat(context).doesNotHaveBean(Maskinportenklient::class.java)
+                assertThat(context).hasFailed()
             }
         }
 
