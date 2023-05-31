@@ -43,7 +43,7 @@
         <lang-tag.version>1.7</lang-tag.version>
         <oauth2-oidc-sdk.version>10.9.1</oauth2-oidc-sdk.version>
         <apache-httpclient.version>5.2.1</apache-httpclient.version>
-        <bouncycastle.version>1.72</bouncycastle.version>
+        <bouncycastle.version>1.73</bouncycastle.version>
 
         <junit.version>5.9.3</junit.version>
         <assertj.version>3.24.2</assertj.version>
