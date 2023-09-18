@@ -380,7 +380,7 @@ class MaskinportenklientTest {
 
         int random = ThreadLocalRandom.current().nextInt(0, 3);
         switch (random) {
-            case 0 -> builder.usingAsymmetricKey(UUID.randomUUID().toString());
+            case 0 -> builder.usingAsymmetricKey(UUID.randomUUID().toString(), SigningAlgorithm.RS256);
             case 1 -> builder.usingVirksomhetssertifikat(authKeyStore.getCertificate());
             default -> builder.usingJwsHeaderProvider(() -> new JWSHeader.Builder(JWSAlgorithm.RS256)
                     .keyID(UUID.randomUUID().toString())

@@ -18,10 +18,7 @@ import org.apache.hc.client5.http.impl.classic.HttpClientBuilder
 import org.apache.hc.core5.http.*
 import org.apache.hc.core5.http.io.HttpClientResponseHandler
 import org.apache.hc.core5.http.io.support.ClassicRequestBuilder
-import java.io.BufferedReader
 import java.io.IOException
-import java.io.InputStream
-import java.io.InputStreamReader
 import java.nio.charset.StandardCharsets
 import java.security.KeyStore
 import java.security.PrivateKey
@@ -301,10 +298,12 @@ class MaskinportenklientBuilder {
         this.jwsHeaderProvider = VirksomhetssertifikatJWSHeaderProvider(certificate)
     }
 
-    fun usingAsymmetricKey(keyId: String) = this.also {
+    fun usingAsymmetricKey(keyId: String, asymmetricKeySignAlgorithm: SigningAlgorithm) = this.also {
         if (this.jwsHeaderProvider != null) log.warn { "Overriding already set jwsHeaderProvider with asymmetric key" }
-        this.jwsHeaderProvider = AsymmetricKeyJWSHeaderProvider(keyId)
+        this.jwsHeaderProvider = AsymmetricKeyJWSHeaderProvider(keyId, asymmetricKeySignAlgorithm)
     }
+
+    fun usingAsymmetricKey(keyId: String) = usingAsymmetricKey(keyId, SigningAlgorithm.RS256)
 
     fun usingJwsHeaderProvider(jwsHeaderProvider: JWSHeaderProvider) = this.also {
         if (this.jwsHeaderProvider != null) log.warn { "Overriding already set jwsHeaderProvider with custom provider" }
@@ -316,4 +315,8 @@ class MaskinportenklientBuilder {
         jwsHeaderProvider ?: throw IllegalArgumentException("""Must configure client to use either virksomhetssertifikat, asymmetric key or custom JWSHeaderProvider"""),
         properties ?: throw IllegalArgumentException("""The "properties" property can not be null"""),
     )
+}
+
+enum class SigningAlgorithm {
+    RS256, RS384, RS512
 }

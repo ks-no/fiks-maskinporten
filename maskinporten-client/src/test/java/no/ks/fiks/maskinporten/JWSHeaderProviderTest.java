@@ -34,7 +34,7 @@ public class JWSHeaderProviderTest {
     @DisplayName("Test that asymmetric key header is correctly built")
     void testAsymmetricKeyHeader() {
         String keyId = UUID.randomUUID().toString();
-        JWSHeader header = new AsymmetricKeyJWSHeaderProvider(keyId).buildJWSHeader();
+        JWSHeader header = new AsymmetricKeyJWSHeaderProvider(keyId, SigningAlgorithm.RS256).buildJWSHeader();
 
         assertThat(header.getAlgorithm()).isEqualTo(JWSAlgorithm.RS256);
         assertThat(header.getKeyID()).isEqualTo(keyId);
