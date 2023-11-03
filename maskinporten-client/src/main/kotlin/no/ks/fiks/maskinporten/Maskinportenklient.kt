@@ -15,6 +15,7 @@ import no.ks.fiks.maskinporten.error.MaskinportenTokenRequestException
 import org.apache.hc.client5.http.config.RequestConfig
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder
 import org.apache.hc.core5.http.*
 import org.apache.hc.core5.http.io.HttpClientResponseHandler
 import org.apache.hc.core5.http.io.support.ClassicRequestBuilder
@@ -248,6 +249,7 @@ class Maskinportenklient(
             .disableRedirectHandling()
             .disableAuthCaching()
             .setDefaultRequestConfig(RequestConfig.custom().setConnectionRequestTimeout(properties.timeoutMillis.toLong(), TimeUnit.MILLISECONDS).build())
+            .setConnectionManager(PoolingHttpClientConnectionManagerBuilder.create().setMaxConnPerRoute(10).build())
             .build().use {
                 httpRequestResponse(it)
             }
