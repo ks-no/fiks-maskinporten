@@ -15,14 +15,12 @@ import no.ks.fiks.maskinporten.error.MaskinportenTokenRequestException
 import org.apache.hc.client5.http.config.RequestConfig
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder
 import org.apache.hc.core5.http.*
 import org.apache.hc.core5.http.io.HttpClientResponseHandler
 import org.apache.hc.core5.http.io.support.ClassicRequestBuilder
-import java.io.BufferedReader
 import java.io.IOException
-import java.io.InputStream
-import java.io.InputStreamReader
 import java.nio.charset.StandardCharsets
 import java.security.KeyStore
 import java.security.PrivateKey
@@ -51,6 +49,7 @@ class Maskinportenklient(
 ) : MaskinportenklientOperations {
     private val jwsHeader: JWSHeader
     private val signer: JWSSigner
+    private val connectionManager: PoolingHttpClientConnectionManager?
     private val map: ExpiringMap<AccessTokenRequest, String>
 
     @Deprecated("Use MaskinportenklientBuilder")
@@ -79,6 +78,7 @@ class Maskinportenklient(
     init {
         jwsHeader = jwsHeaderProvider.buildJWSHeader()
         signer = RSASSASigner(privateKey)
+        connectionManager = if (properties.providedHttpClient != null) createConnectionManager() else null
         map = ExpiringMap.builder()
             .variableExpiration()
             .expiringEntryLoader(ExpiringEntryLoader { tokenRequest: AccessTokenRequest ->
@@ -219,7 +219,9 @@ class Maskinportenklient(
                 httpClient.execute(createHttpRequest(postData), object : HttpClientResponseHandler<String?> {
                     override fun handleResponse(classicHttpResponse: ClassicHttpResponse): String? {
                         val responseCode = classicHttpResponse.code
-                        log.debug { "Access token response received in ${System.currentTimeMillis() - startTime} ms with status $responseCode" }
+                        val timeUsed = System.currentTimeMillis() - startTime
+                        log.debug { "Access token response received in $timeUsed ms with status $responseCode" }
+                        logConnectionManager(timeUsed, connectionManager)
                         return if (HttpStatus.SC_OK == responseCode) {
                             classicHttpResponse.entity.content?.use { contentStream -> contentStream.bufferedReader().use { it.readText() } }
                         } else {
@@ -249,11 +251,23 @@ class Maskinportenklient(
             .disableRedirectHandling()
             .disableAuthCaching()
             .setDefaultRequestConfig(RequestConfig.custom().setConnectionRequestTimeout(properties.timeoutMillis.toLong(), TimeUnit.MILLISECONDS).build())
-            .setConnectionManager(PoolingHttpClientConnectionManagerBuilder.create().setMaxConnPerRoute(10).build())
+            .setConnectionManager(connectionManager)
             .build().use {
                 httpRequestResponse(it)
             }
 
+    private fun createConnectionManager(): PoolingHttpClientConnectionManager? =
+        PoolingHttpClientConnectionManagerBuilder.create().setMaxConnPerRoute(10).build()
+
+    private fun logConnectionManager(timeUsed: Long, connectionManager: PoolingHttpClientConnectionManager?) {
+        if (timeUsed > 10000 && connectionManager != null) {
+            log.debug {
+                """Connection pool has ${connectionManager.totalStats.available} available connections of ${connectionManager.totalStats.max} connections.
+                    The maximum connections per route are ${connectionManager.defaultMaxPerRoute}. 
+                    ${connectionManager.totalStats.leased} connections are leased and ${connectionManager.totalStats.pending} connections are pending."""
+            }
+        }
+    }
 
     private fun createHttpRequest(entityBuffer: ByteArray): ClassicHttpRequest {
         return ClassicRequestBuilder.post(properties.tokenEndpoint)
