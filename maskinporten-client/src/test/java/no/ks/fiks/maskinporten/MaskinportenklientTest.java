@@ -239,7 +239,7 @@ class MaskinportenklientTest {
         }
     }
 
-    @DisplayName("Generate access token fails. Maskinporten returns temporary unavailable.")
+    @DisplayName("Generate access token fails. Maskinporten returns temporarily unavailable.")
     @Test
     void getAccessTokenFailsTemporarilyUnavailable() {
         try (final ClientAndServer client = ClientAndServer.startClientAndServer()) {
