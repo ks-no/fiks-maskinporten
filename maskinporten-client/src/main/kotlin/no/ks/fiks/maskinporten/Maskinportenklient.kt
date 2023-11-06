@@ -260,7 +260,7 @@ class Maskinportenklient(
         PoolingHttpClientConnectionManagerBuilder.create().setMaxConnPerRoute(10).build()
 
     private fun logConnectionManager(timeUsed: Long, connectionManager: PoolingHttpClientConnectionManager?) {
-        if (timeUsed > 10000 && connectionManager != null) {
+        if (timeUsed > 1000 && connectionManager != null) {
             log.debug {
                 """Connection pool has ${connectionManager.totalStats.available} available connections of ${connectionManager.totalStats.max} connections.
                     The maximum connections per route are ${connectionManager.defaultMaxPerRoute}. 
