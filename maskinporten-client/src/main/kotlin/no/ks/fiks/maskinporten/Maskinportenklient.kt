@@ -12,16 +12,14 @@ import net.jodah.expiringmap.ExpiringMap
 import net.jodah.expiringmap.ExpiringValue
 import no.ks.fiks.maskinporten.error.MaskinportenClientTokenRequestException
 import no.ks.fiks.maskinporten.error.MaskinportenTokenRequestException
+import no.ks.fiks.maskinporten.error.MaskinportenTokenTemporarilyUnavailableException
 import org.apache.hc.client5.http.config.RequestConfig
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder
 import org.apache.hc.core5.http.*
 import org.apache.hc.core5.http.io.HttpClientResponseHandler
 import org.apache.hc.core5.http.io.support.ClassicRequestBuilder
-import java.io.BufferedReader
 import java.io.IOException
-import java.io.InputStream
-import java.io.InputStreamReader
 import java.nio.charset.StandardCharsets
 import java.security.KeyStore
 import java.security.PrivateKey
@@ -220,17 +218,35 @@ class Maskinportenklient(
                         val responseCode = classicHttpResponse.code
                         log.debug { "Access token response received in ${System.currentTimeMillis() - startTime} ms with status $responseCode" }
                         return if (HttpStatus.SC_OK == responseCode) {
-                            classicHttpResponse.entity.content?.use { contentStream -> contentStream.bufferedReader().use { it.readText() } }
-                        } else {
-                            val errorFromMaskinporten: String = classicHttpResponse.entity.content.use { errorContentStream ->
-                                errorContentStream.bufferedReader().use { it.readText() }
+                            classicHttpResponse.entity.content?.use { contentStream ->
+                                contentStream.bufferedReader().use { it.readText() }
                             }
+                        } else {
+                            val errorFromMaskinporten: String =
+                                classicHttpResponse.entity.content.use { errorContentStream ->
+                                    errorContentStream.bufferedReader().use { it.readText() }
+                                }
                             log.warn { "Failed to get token: $errorFromMaskinporten" }
-                            val exceptionMessage = "Http response code: $responseCode, url: '$tokenEndpointUrlString', message: '$errorFromMaskinporten'"
+                            val exceptionMessage =
+                                "Http response code: $responseCode, url: '$tokenEndpointUrlString', message: '$errorFromMaskinporten'"
                             if (responseCode >= HttpStatus.SC_BAD_REQUEST && responseCode < HttpStatus.SC_INTERNAL_SERVER_ERROR) {
-                                throw MaskinportenClientTokenRequestException(exceptionMessage, responseCode, errorFromMaskinporten)
+                                throw MaskinportenClientTokenRequestException(
+                                    exceptionMessage,
+                                    responseCode,
+                                    errorFromMaskinporten
+                                )
+                            } else if (responseCode == HttpStatus.SC_SERVICE_UNAVAILABLE) {
+                                throw MaskinportenTokenTemporarilyUnavailableException(
+                                    exceptionMessage,
+                                    responseCode,
+                                    errorFromMaskinporten
+                                )
                             } else {
-                                throw MaskinportenTokenRequestException(exceptionMessage, responseCode, errorFromMaskinporten)
+                                throw MaskinportenTokenRequestException(
+                                    exceptionMessage,
+                                    responseCode,
+                                    errorFromMaskinporten
+                                )
                             }
                         }
                     }
