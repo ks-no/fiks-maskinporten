@@ -45,7 +45,7 @@
         <apache-httpclient.version>5.2.1</apache-httpclient.version>
         <bouncycastle.version>1.76</bouncycastle.version>
 
-        <junit.version>5.10.0</junit.version>
+        <junit.version>5.10.1</junit.version>
         <assertj.version>3.24.2</assertj.version>
         <mockk.version>1.13.8</mockk.version>
         <mockito.version>5.7.0</mockito.version>
