@@ -16,6 +16,7 @@ import com.nimbusds.jwt.SignedJWT;
 import io.netty.handler.codec.http.HttpMethod;
 import no.ks.fiks.maskinporten.error.MaskinportenClientTokenRequestException;
 import no.ks.fiks.maskinporten.error.MaskinportenTokenRequestException;
+import no.ks.fiks.maskinporten.error.MaskinportenTokenTemporarilyUnavailableException;
 import no.ks.fiks.virksomhetsertifikat.Sertifikat;
 import no.ks.fiks.virksomhetsertifikat.SertifikatType;
 import no.ks.fiks.virksomhetsertifikat.VirksomhetSertifikater;
@@ -235,6 +236,30 @@ class MaskinportenklientTest {
             final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()));
             final MaskinportenTokenRequestException exception = catchThrowableOfType(() -> maskinportenklient.getAccessToken(SCOPE), MaskinportenTokenRequestException.class);
             assertThat(exception.getStatusCode()).isEqualTo(HttpStatusCode.INTERNAL_SERVER_ERROR_500.code());
+        }
+    }
+
+    @DisplayName("Generate access token fails. Maskinporten returns temporarily unavailable.")
+    @Test
+    void getAccessTokenFailsTemporarilyUnavailable() {
+        try (final ClientAndServer client = ClientAndServer.startClientAndServer()) {
+            client.when(
+                            request()
+                                    .withSecure(false)
+                                    .withMethod(HttpMethod.POST.name())
+                                    .withPath("/token")
+                                    .withBody(
+                                            params(
+                                                    param("grant_type", JWT_BEARER_GRANT)
+                                            )
+                                    ),
+                            Times.exactly(1))
+                    .respond(response()
+                            .withBody("FAILURE WAS AN OPTION AFTER ALL")
+                            .withStatusCode(HttpStatusCode.SERVICE_UNAVAILABLE_503.code()));
+            final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()));
+            final MaskinportenTokenTemporarilyUnavailableException exception = catchThrowableOfType(() -> maskinportenklient.getAccessToken(SCOPE), MaskinportenTokenTemporarilyUnavailableException.class);
+            assertThat(exception.getStatusCode()).isEqualTo(HttpStatusCode.SERVICE_UNAVAILABLE_503.code());
         }
     }
 

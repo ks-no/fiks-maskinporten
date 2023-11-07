@@ -12,6 +12,7 @@ import net.jodah.expiringmap.ExpiringMap
 import net.jodah.expiringmap.ExpiringValue
 import no.ks.fiks.maskinporten.error.MaskinportenClientTokenRequestException
 import no.ks.fiks.maskinporten.error.MaskinportenTokenRequestException
+import no.ks.fiks.maskinporten.error.MaskinportenTokenTemporarilyUnavailableException
 import org.apache.hc.client5.http.config.RequestConfig
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder
@@ -223,17 +224,35 @@ class Maskinportenklient(
                         log.debug { "Access token response received in $timeUsed ms with status $responseCode" }
                         logConnectionManager(timeUsed, connectionManager)
                         return if (HttpStatus.SC_OK == responseCode) {
-                            classicHttpResponse.entity.content?.use { contentStream -> contentStream.bufferedReader().use { it.readText() } }
-                        } else {
-                            val errorFromMaskinporten: String = classicHttpResponse.entity.content.use { errorContentStream ->
-                                errorContentStream.bufferedReader().use { it.readText() }
+                            classicHttpResponse.entity.content?.use { contentStream ->
+                                contentStream.bufferedReader().use { it.readText() }
                             }
+                        } else {
+                            val errorFromMaskinporten: String =
+                                classicHttpResponse.entity.content.use { errorContentStream ->
+                                    errorContentStream.bufferedReader().use { it.readText() }
+                                }
                             log.warn { "Failed to get token: $errorFromMaskinporten" }
-                            val exceptionMessage = "Http response code: $responseCode, url: '$tokenEndpointUrlString', message: '$errorFromMaskinporten'"
+                            val exceptionMessage =
+                                "Http response code: $responseCode, url: '$tokenEndpointUrlString', message: '$errorFromMaskinporten'"
                             if (responseCode >= HttpStatus.SC_BAD_REQUEST && responseCode < HttpStatus.SC_INTERNAL_SERVER_ERROR) {
-                                throw MaskinportenClientTokenRequestException(exceptionMessage, responseCode, errorFromMaskinporten)
+                                throw MaskinportenClientTokenRequestException(
+                                    exceptionMessage,
+                                    responseCode,
+                                    errorFromMaskinporten
+                                )
+                            } else if (responseCode == HttpStatus.SC_SERVICE_UNAVAILABLE) {
+                                throw MaskinportenTokenTemporarilyUnavailableException(
+                                    exceptionMessage,
+                                    responseCode,
+                                    errorFromMaskinporten
+                                )
                             } else {
-                                throw MaskinportenTokenRequestException(exceptionMessage, responseCode, errorFromMaskinporten)
+                                throw MaskinportenTokenRequestException(
+                                    exceptionMessage,
+                                    responseCode,
+                                    errorFromMaskinporten
+                                )
                             }
                         }
                     }
