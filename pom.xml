@@ -46,7 +46,7 @@
         <bouncycastle.version>1.77</bouncycastle.version>
 
         <junit.version>5.10.1</junit.version>
-        <assertj.version>3.25.1</assertj.version>
+        <assertj.version>3.25.2</assertj.version>
         <mockk.version>1.13.9</mockk.version>
         <mockito.version>5.9.0</mockito.version>
     </properties>
