@@ -222,6 +222,12 @@ class Maskinportenklient(
                         val responseCode = classicHttpResponse.code
                         val timeUsed = System.currentTimeMillis() - startTime
                         log.debug { "Access token response received in $timeUsed ms with status $responseCode" }
+                        if (timeUsed > 5000) {
+                            log.warn { "Access token response received in $timeUsed ms with status $responseCode" }
+                        } else if (timeUsed > 1000) {
+                            log.info { "Access token response received in $timeUsed ms with status $responseCode" }
+                        }
+
                         logConnectionManager(timeUsed, connectionManager)
                         return if (HttpStatus.SC_OK == responseCode) {
                             classicHttpResponse.entity.content?.use { contentStream ->
@@ -280,7 +286,7 @@ class Maskinportenklient(
 
     private fun logConnectionManager(timeUsed: Long, connectionManager: PoolingHttpClientConnectionManager?) {
         if (timeUsed > 1000 && connectionManager != null) {
-            log.debug {
+            log.info {
                 """Connection pool has ${connectionManager.totalStats.available} available connections of ${connectionManager.totalStats.max} connections.
                     The maximum connections per route are ${connectionManager.defaultMaxPerRoute}. 
                     ${connectionManager.totalStats.leased} connections are leased and ${connectionManager.totalStats.pending} connections are pending."""
