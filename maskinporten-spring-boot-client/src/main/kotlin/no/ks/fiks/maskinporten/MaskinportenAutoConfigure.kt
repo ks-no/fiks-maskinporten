@@ -1,6 +1,11 @@
 package no.ks.fiks.maskinporten
 
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.observation.ObservationRegistry
 import no.ks.fiks.maskinporten.key.MaskinportenPrivateKeyFactory
+import no.ks.fiks.maskinporten.observability.DefaultMaskinportenKlientObservability
+import no.ks.fiks.maskinporten.observability.MaskinportenKlientObservability
+import no.ks.fiks.maskinporten.observability.MicrometerMaskinportenKlientObservability
 import no.ks.fiks.virksomhetsertifikat.VirksomhetSertifikatAutoConfigure
 import no.ks.fiks.virksomhetsertifikat.VirksomhetSertifikater
 import org.springframework.boot.autoconfigure.AutoConfiguration
@@ -21,6 +26,22 @@ import org.springframework.core.type.AnnotatedTypeMetadata
 @EnableConfigurationProperties(MaskinportenProperties::class)
 class MaskinportenAutoConfigure {
 
+    /**
+     * Configures observability for MaskinportenKlient
+     */
+    @AutoConfiguration
+    inner class Observability {
+        @Bean
+        @ConditionalOnBean(MeterRegistry::class, ObservationRegistry::class)
+        fun micrometerMaskinportenKlientObservability(observationRegistry: ObservationRegistry, metricRegistry: MeterRegistry): MaskinportenKlientObservability {
+            return MicrometerMaskinportenKlientObservability(observationRegistry, metricRegistry)
+        }
+
+        @Bean
+        @ConditionalOnMissingBean(MaskinportenKlientObservability::class)
+        fun defaultMaskinportenKlientObservability(): MaskinportenKlientObservability = DefaultMaskinportenKlientObservability()
+    }
+
     @AutoConfigureAfter(VirksomhetSertifikatAutoConfigure::class)
     @ConditionalOnClass(VirksomhetSertifikater::class)
     inner class MaskinportenUsingVirksomhetSertifikatAutoConfigure {
@@ -28,12 +49,15 @@ class MaskinportenAutoConfigure {
         @ConditionalOnMissingBean
         @Conditional(MissingAsymmetricKeyConfigurationCondition::class)
         @Bean
-        fun getMaskinportenklient(properties: MaskinportenProperties, virksomhetSertifikater: VirksomhetSertifikater): Maskinportenklient {
+        fun getMaskinportenklient(properties: MaskinportenProperties,
+                                  virksomhetSertifikater: VirksomhetSertifikater,
+                                  maskinportenKlientObservability: MaskinportenKlientObservability): Maskinportenklient {
             val authKeyStore = virksomhetSertifikater.requireAuthKeyStore()
             return MaskinportenklientBuilder()
                 .withProperties(properties.toMaskinportenklientProperties())
                 .usingVirksomhetssertifikat(authKeyStore.certificate)
                 .withPrivateKey(authKeyStore.privateKey)
+                .havingObservabilitySupport(maskinportenKlientObservability)
                 .build()
         }
     }
@@ -44,11 +68,16 @@ class MaskinportenAutoConfigure {
 
         @ConditionalOnMissingBean
         @Bean
-        fun getMaskinportenklient(properties: MaskinportenProperties, maskinportenPrivateKeyProvider: MaskinportenPrivateKeyProvider): Maskinportenklient {
+        fun getMaskinportenklient(
+            properties: MaskinportenProperties,
+            maskinportenPrivateKeyProvider: MaskinportenPrivateKeyProvider,
+            maskinportenKlientObservability: MaskinportenKlientObservability
+        ): Maskinportenklient {
             return MaskinportenklientBuilder()
                 .usingAsymmetricKey(properties.asymmetricKey!!)
                 .withPrivateKey(maskinportenPrivateKeyProvider.privateKey)
                 .withProperties(properties.toMaskinportenklientProperties())
+                .havingObservabilitySupport(maskinportenKlientObservability)
                 .build()
         }
 

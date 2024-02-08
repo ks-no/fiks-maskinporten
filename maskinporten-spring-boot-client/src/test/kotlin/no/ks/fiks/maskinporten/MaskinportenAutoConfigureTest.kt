@@ -1,14 +1,22 @@
 package no.ks.fiks.maskinporten
 
 import io.kotest.core.spec.style.StringSpec
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.observation.DefaultMeterObservationHandler
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
+import io.micrometer.observation.ObservationRegistry
 import io.mockk.every
 import io.mockk.mockk
+import no.ks.fiks.maskinporten.observability.MaskinportenKlientObservability
+import no.ks.fiks.maskinporten.observability.MicrometerMaskinportenKlientObservability
 import no.ks.fiks.virksomhetsertifikat.VirksomhetSertifikatAutoConfigure
 import no.ks.fiks.virksomhetsertifikat.VirksomhetSertifikater
 import org.assertj.core.api.Assertions.assertThat
 import org.springframework.boot.autoconfigure.AutoConfigurations
 import org.springframework.boot.test.context.FilteredClassLoader
 import org.springframework.boot.test.context.runner.ApplicationContextRunner
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
 import java.math.BigInteger
 import java.security.Principal
 import java.security.PrivateKey
@@ -44,6 +52,37 @@ class MaskinportenAutoConfigureTest : StringSpec() {
                 .withBean(VirksomhetSertifikater::class.java, { virksomhetSertifikater })
                 .run { context ->
                     assertThat(context).hasSingleBean(Maskinportenklient::class.java)
+                    assertThat(context).hasSingleBean(MaskinportenKlientObservability::class.java)
+                    assertThat(context).doesNotHaveBean(MicrometerMaskinportenKlientObservability::class.java)
+                }
+        }
+
+        "Autoconfigures Maskinportenklient using virksomhetssertifikat with observability" {
+            val issuer = "issuer"
+            val audience = "audience"
+            val tokenEndpoint = "https://somewhere"
+
+            val virksomhetSertifikatStore = mockk<VirksomhetSertifikater.KsVirksomhetSertifikatStore> {
+                every { certificate } returns mockCertificate
+                every { privateKey } returns mockPrivateKey
+            }
+            val virksomhetSertifikater = mockk<VirksomhetSertifikater> {
+                every { requireAuthKeyStore() } returns virksomhetSertifikatStore
+            }
+            contextRunner
+                .withPropertyValues(
+                    "debug=true",
+                    "maskinporten.audience=$audience",
+                    "maskinporten.tokenEndpoint=$tokenEndpoint",
+                    "maskinporten.issuer=$issuer"
+                )
+                .withUserConfiguration(ObservableConfiguration::class.java)
+                .withConfiguration(AutoConfigurations.of(VirksomhetSertifikatAutoConfigure::class.java))
+                .withBean(VirksomhetSertifikater::class.java, { virksomhetSertifikater })
+                .run { context ->
+                    assertThat(context).hasSingleBean(Maskinportenklient::class.java)
+                    assertThat(context).hasSingleBean(MaskinportenKlientObservability::class.java)
+                    assertThat(context).hasSingleBean(MicrometerMaskinportenKlientObservability::class.java)
                 }
         }
 
@@ -227,5 +266,16 @@ class MaskinportenAutoConfigureTest : StringSpec() {
         }
     }
 
+    @Configuration
+    private class ObservableConfiguration {
+        @Bean
+        fun meterRegistry() = SimpleMeterRegistry()
+        @Bean
+        fun observationRegistry() = ObservationRegistry.create().apply {
+            observationConfig().observationHandler(
+                DefaultMeterObservationHandler(meterRegistry())
+            )
+        }
+    }
 
 }

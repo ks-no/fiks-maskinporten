@@ -338,7 +338,8 @@ class MaskinportenklientBuilder {
 
     fun withProperties(properties: MaskinportenklientProperties) = this.also { this.properties = properties }
 
-    fun havingObservabilitySupport(maskinportenKlientObservability: MaskinportenKlientObservability) = this.also { this.maskinportenKlientObservability = maskinportenKlientObservability }
+    fun havingObservabilitySupport(maskinportenKlientObservability: MaskinportenKlientObservability) =
+        this.also { this.maskinportenKlientObservability = maskinportenKlientObservability }
 
     fun usingVirksomhetssertifikat(certificate: X509Certificate) = this.also {
         if (this.jwsHeaderProvider != null) log.warn { "Overriding already set jwsHeaderProvider with virksomhetssertifikat" }
