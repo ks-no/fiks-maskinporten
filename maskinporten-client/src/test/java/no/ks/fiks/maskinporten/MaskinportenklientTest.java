@@ -1,5 +1,6 @@
 package no.ks.fiks.maskinporten;
 
+import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -13,10 +14,16 @@ import com.nimbusds.jose.jwk.KeyUse;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import io.micrometer.core.instrument.observation.DefaultMeterObservationHandler;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.micrometer.observation.ObservationRegistry;
 import io.netty.handler.codec.http.HttpMethod;
 import no.ks.fiks.maskinporten.error.MaskinportenClientTokenRequestException;
 import no.ks.fiks.maskinporten.error.MaskinportenTokenRequestException;
 import no.ks.fiks.maskinporten.error.MaskinportenTokenTemporarilyUnavailableException;
+import no.ks.fiks.maskinporten.observability.DropwizardMetricsMaskinportenKlientObservability;
+import no.ks.fiks.maskinporten.observability.MaskinportenKlientObservability;
+import no.ks.fiks.maskinporten.observability.MicrometerMaskinportenKlientObservability;
 import no.ks.fiks.virksomhetsertifikat.Sertifikat;
 import no.ks.fiks.virksomhetsertifikat.SertifikatType;
 import no.ks.fiks.virksomhetsertifikat.VirksomhetSertifikater;
@@ -157,10 +164,69 @@ class MaskinportenklientTest {
                                     )
                             )
             ).respond(callback().withCallbackClass(OidcMockExpectation.class));
-            final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()));
-            final String accessToken = maskinportenklient.getAccessToken(SCOPE);
-            assertThat(accessToken).isEqualTo(OidcMockExpectation.previousJwt);
+            try (Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()))) {
+                assertThat(maskinportenklient.getAccessToken(SCOPE)).isEqualTo(OidcMockExpectation.previousJwt);
+            }
         }
+    }
+
+    @DisplayName("Generate access token while observing with micrometer")
+    @Test
+    void getAccessTokenWithMicrometerObservability() {
+        final var meterRegistry = new SimpleMeterRegistry();
+        final ObservationRegistry observationRegistry = ObservationRegistry.create();
+        observationRegistry.observationConfig()
+                .observationHandler(new DefaultMeterObservationHandler(meterRegistry));
+        final var maskinportenKlientObservability = new MicrometerMaskinportenKlientObservability(observationRegistry, meterRegistry);
+        try (final ClientAndServer client = ClientAndServer.startClientAndServer()) {
+            client.when(
+                    request()
+                            .withSecure(false)
+                            .withMethod(HttpMethod.POST.name())
+                            .withPath("/token")
+                            .withBody(
+                                    params(
+                                            param("grant_type", JWT_BEARER_GRANT)
+                                    )
+                            )
+            ).respond(callback().withCallbackClass(OidcMockExpectation.class));
+            try (Maskinportenklient maskinportenklient = createClientWithObservability(String.format("http://localhost:%s/token", client.getLocalPort()), maskinportenKlientObservability)) {
+                assertThat(maskinportenklient.getAccessToken(SCOPE)).isEqualTo(OidcMockExpectation.previousJwt);
+            }
+
+        }
+        assertThat(meterRegistry).satisfies(reg ->
+                assertThat(reg.get("httpcomponents.httpclient.request").timer().count()).isEqualTo(1)
+        );
+        assertThat(meterRegistry).satisfies(reg ->
+                assertThat(reg.get("httpcomponents.httpclient.request.active").longTaskTimer())).isNotNull();
+        meterRegistry.close();
+    }
+
+    @DisplayName("Generate access token while observing with dropwizard metrics")
+    @Test
+    void getAccessTokenWithDropwizardMetricObservability() {
+        final var metricRegistry = new MetricRegistry();
+        final var maskinportenKlientObservability = new DropwizardMetricsMaskinportenKlientObservability(metricRegistry);
+        try (final ClientAndServer client = ClientAndServer.startClientAndServer()) {
+            client.when(
+                    request()
+                            .withSecure(false)
+                            .withMethod(HttpMethod.POST.name())
+                            .withPath("/token")
+                            .withBody(
+                                    params(
+                                            param("grant_type", JWT_BEARER_GRANT)
+                                    )
+                            )
+            ).respond(callback().withCallbackClass(OidcMockExpectation.class));
+            try (Maskinportenklient maskinportenklient = createClientWithObservability(String.format("http://localhost:%s/token", client.getLocalPort()), maskinportenKlientObservability)) {
+                assertThat(maskinportenklient.getAccessToken(SCOPE)).isEqualTo(OidcMockExpectation.previousJwt);
+            }
+        }
+        assertThat(metricRegistry).satisfies(reg ->
+                assertThat(reg.getTimers().firstKey()).isEqualTo("org.apache.hc.client5.http.classic.HttpClient.post-requests")
+        );
     }
 
     @DisplayName("Generate access token, but using provided http client")
@@ -208,10 +274,11 @@ class MaskinportenklientTest {
                                     )
                             ),
                     Times.exactly(1)).respond(callback().withCallbackClass(OidcMockExpectation.class));
-            final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()));
-            final String accessToken = maskinportenklient.getAccessToken(SCOPE);
-            assertThat(accessToken).isEqualTo(OidcMockExpectation.previousJwt);
-            assertThat(maskinportenklient.getAccessToken(SCOPE)).isEqualTo(accessToken);
+            try (Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()))) {
+                final String accessToken = maskinportenklient.getAccessToken(SCOPE);
+                assertThat(accessToken).isEqualTo(OidcMockExpectation.previousJwt);
+                assertThat(maskinportenklient.getAccessToken(SCOPE)).isEqualTo(accessToken);
+            }
         }
     }
 
@@ -233,8 +300,10 @@ class MaskinportenklientTest {
                     .respond(response()
                             .withBody("FAILURE WAS AN OPTION AFTER ALL")
                             .withStatusCode(HttpStatusCode.INTERNAL_SERVER_ERROR_500.code()));
-            final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()));
-            final MaskinportenTokenRequestException exception = catchThrowableOfType(() -> maskinportenklient.getAccessToken(SCOPE), MaskinportenTokenRequestException.class);
+            final MaskinportenTokenRequestException exception;
+            try (Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()))) {
+                exception = catchThrowableOfType(() -> maskinportenklient.getAccessToken(SCOPE), MaskinportenTokenRequestException.class);
+            }
             assertThat(exception.getStatusCode()).isEqualTo(HttpStatusCode.INTERNAL_SERVER_ERROR_500.code());
         }
     }
@@ -257,8 +326,10 @@ class MaskinportenklientTest {
                     .respond(response()
                             .withBody("FAILURE WAS AN OPTION AFTER ALL")
                             .withStatusCode(HttpStatusCode.SERVICE_UNAVAILABLE_503.code()));
-            final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()));
-            final MaskinportenTokenTemporarilyUnavailableException exception = catchThrowableOfType(() -> maskinportenklient.getAccessToken(SCOPE), MaskinportenTokenTemporarilyUnavailableException.class);
+            final MaskinportenTokenTemporarilyUnavailableException exception;
+            try (Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()))) {
+                exception = catchThrowableOfType(() -> maskinportenklient.getAccessToken(SCOPE), MaskinportenTokenTemporarilyUnavailableException.class);
+            }
             assertThat(exception.getStatusCode()).isEqualTo(HttpStatusCode.SERVICE_UNAVAILABLE_503.code());
         }
     }
@@ -271,8 +342,10 @@ class MaskinportenklientTest {
         try (ServerSocket s = new ServerSocket(0)) {
             localport = s.getLocalPort();
         }
-        final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", localport));
-        final RuntimeException runtimeException = catchThrowableOfType(() -> maskinportenklient.getAccessToken(SCOPE), RuntimeException.class);
+        final RuntimeException runtimeException;
+        try (Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", localport))) {
+            runtimeException = catchThrowableOfType(() -> maskinportenklient.getAccessToken(SCOPE), RuntimeException.class);
+        }
         assertThat(runtimeException.getCause()).isInstanceOf(HttpHostConnectException.class);
 
     }
@@ -282,7 +355,9 @@ class MaskinportenklientTest {
     void getDelegatedAccessTokenFails403() {
         final String consumerOrg = "888888888";
         final String maskinportenError = String.format("Consumer %s has not delegated access to the scope provider:scope to supplier 999999999. (correlation id: %s)", consumerOrg, UUID.randomUUID());
-        try (final ClientAndServer client = ClientAndServer.startClientAndServer()) {
+        try (final ClientAndServer client = ClientAndServer.startClientAndServer();
+             final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()))
+        ) {
             client.when(
                     request()
                             .withMethod(HttpMethod.POST.name())
@@ -294,7 +369,7 @@ class MaskinportenklientTest {
                             )
             ).respond(response().withStatusCode(HttpStatusCode.FORBIDDEN_403.code())
                     .withBody(maskinportenError));
-            final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()));
+
             MaskinportenClientTokenRequestException thrown = catchThrowableOfType(() -> maskinportenklient.getDelegatedAccessToken(consumerOrg, SCOPE), MaskinportenClientTokenRequestException.class);
             assertThat(thrown.getMaskinportenError()).isEqualTo(maskinportenError);
             assertThat(thrown.getStatusCode()).isEqualTo(HttpStatusCode.FORBIDDEN_403.code());
@@ -317,9 +392,9 @@ class MaskinportenklientTest {
                                     )
                             )
             ).respond(callback().withCallbackClass(OidcMockExpectation.class));
-            final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()));
-            final String accessToken = maskinportenklient.getDelegatedAccessToken(consumerOrg, SCOPE);
-            assertThat(accessToken).isEqualTo(OidcMockExpectation.previousJwt);
+            try (Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()))) {
+                assertThat(maskinportenklient.getDelegatedAccessToken(consumerOrg, SCOPE)).isEqualTo(OidcMockExpectation.previousJwt);
+            }
         }
     }
 
@@ -375,6 +450,8 @@ class MaskinportenklientTest {
         }
     }
 
+
+
     private Maskinportenklient createClient(final String tokenEndpoint) {
         return createMaskinportenklient(createVirksomhetSertifikater().requireAuthKeyStore(), MaskinportenklientProperties.builder()
                 .audience("https://ver2.maskinporten.no/")
@@ -382,7 +459,17 @@ class MaskinportenklientTest {
                 .issuer("77c0a0ba-d20d-424c-b5dd-f1c63da07fc4")
                 .numberOfSecondsLeftBeforeExpire(10)
                 .timeoutMillis(1000)
-                .build());
+                .build(), null);
+    }
+
+    private Maskinportenklient createClientWithObservability(final String tokenEndpoint, final MaskinportenKlientObservability maskinportenKlientObservability) {
+        return createMaskinportenklient(createVirksomhetSertifikater().requireAuthKeyStore(), MaskinportenklientProperties.builder()
+                .audience("https://ver2.maskinporten.no/")
+                .tokenEndpoint(tokenEndpoint)
+                .issuer("77c0a0ba-d20d-424c-b5dd-f1c63da07fc4")
+                .numberOfSecondsLeftBeforeExpire(10)
+                .timeoutMillis(1000)
+                .build(), maskinportenKlientObservability);
     }
 
     private Maskinportenklient createClient(final String tokenEndpoint, final CloseableHttpClient client) {
@@ -394,11 +481,13 @@ class MaskinportenklientTest {
                 .numberOfSecondsLeftBeforeExpire(10)
                 .timeoutMillis(1000)
                 .providedHttpClient(client)
-                .build());
+                .build(), null);
 
     }
 
-    private Maskinportenklient createMaskinportenklient(final VirksomhetSertifikater.KsVirksomhetSertifikatStore authKeyStore, final MaskinportenklientProperties maskinportenklientProperties) {
+    private Maskinportenklient createMaskinportenklient(final VirksomhetSertifikater.KsVirksomhetSertifikatStore authKeyStore,
+                                                        final MaskinportenklientProperties maskinportenklientProperties,
+                                                        final MaskinportenKlientObservability maskinportenKlientObservability) {
         MaskinportenklientBuilder builder = Maskinportenklient.builder()
                 .withPrivateKey(authKeyStore.getPrivateKey())
                 .withProperties(maskinportenklientProperties);
@@ -410,6 +499,9 @@ class MaskinportenklientTest {
             default -> builder.usingJwsHeaderProvider(() -> new JWSHeader.Builder(JWSAlgorithm.RS256)
                     .keyID(UUID.randomUUID().toString())
                     .build());
+        }
+        if(maskinportenKlientObservability != null) {
+            builder.havingObservabilitySupport(maskinportenKlientObservability);
         }
 
 

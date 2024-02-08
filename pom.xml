@@ -52,6 +52,8 @@
         <assertj.version>3.25.3</assertj.version>
         <mockk.version>1.13.9</mockk.version>
         <mockito.version>5.10.0</mockito.version>
+        <micrometer.version>1.12.2</micrometer.version>
+        <dropwizard-metrics.version>4.2.25</dropwizard-metrics.version>
     </properties>
 
     <dependencyManagement>
@@ -113,6 +115,20 @@
                 <artifactId>kotlin-logging-jvm</artifactId>
                 <version>${kotlin-logging.version}</version>
             </dependency>
+            <!-- Different observability implementations -->
+            <dependency>
+                <groupId>io.micrometer</groupId>
+                <artifactId>micrometer-core</artifactId>
+                <version>${micrometer.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.dropwizard.metrics</groupId>
+                <artifactId>metrics-httpclient5</artifactId>
+                <version>${dropwizard-metrics.version}</version>
+            </dependency>
+
+            <!-- /Different observability implementations -->
+
             <dependency>
                 <groupId>io.kotest</groupId>
                 <artifactId>kotest-runner-junit5-jvm</artifactId>
