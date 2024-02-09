@@ -19,6 +19,8 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Condition
 import org.springframework.context.annotation.ConditionContext
 import org.springframework.context.annotation.Conditional
+import org.springframework.core.Ordered
+import org.springframework.core.annotation.Order
 import org.springframework.core.env.get
 import org.springframework.core.type.AnnotatedTypeMetadata
 
@@ -32,12 +34,23 @@ class MaskinportenAutoConfigure {
     @AutoConfiguration
     inner class Observability {
         @Bean
+        @Order(Ordered.LOWEST_PRECEDENCE)
         @ConditionalOnBean(MeterRegistry::class, ObservationRegistry::class)
+        @ConditionalOnMissingBean
         fun micrometerMaskinportenKlientObservability(observationRegistry: ObservationRegistry, metricRegistry: MeterRegistry): MaskinportenKlientObservability {
             return MicrometerMaskinportenKlientObservability(observationRegistry, metricRegistry)
         }
 
         @Bean
+        @Order(Ordered.LOWEST_PRECEDENCE - 500)
+        @ConditionalOnBean(MeterRegistry::class)
+        @ConditionalOnMissingBean
+        fun micrometerMaskinportenKlientObservabilityWithoutTracing(metricRegistry: MeterRegistry): MaskinportenKlientObservability {
+            return MicrometerMaskinportenKlientObservability(null, metricRegistry)
+        }
+
+        @Bean
+        @Order(Ordered.LOWEST_PRECEDENCE - 1000)
         @ConditionalOnMissingBean(MaskinportenKlientObservability::class)
         fun defaultMaskinportenKlientObservability(): MaskinportenKlientObservability = DefaultMaskinportenKlientObservability()
     }
