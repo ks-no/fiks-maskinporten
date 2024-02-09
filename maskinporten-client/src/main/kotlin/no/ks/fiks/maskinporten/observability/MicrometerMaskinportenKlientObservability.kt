@@ -17,8 +17,10 @@ class MicrometerMaskinportenKlientObservability(private val observationRegistry:
 
     override fun createObservableHttpClientBuilder(): HttpClientBuilder {
         return HttpClientBuilder.create().apply {
-            log.debug { "Enabling micrometer-tracing support for the httpclient" }
-            observationRegistry?.run { addExecInterceptorLast("micrometer", ObservationExecChainHandler(this))  }
+            observationRegistry?.run {
+                log.debug { "Enabling micrometer-tracing support for the httpclient" }
+                addExecInterceptorLast("micrometer", ObservationExecChainHandler(this))
+            }
         }
     }
 
