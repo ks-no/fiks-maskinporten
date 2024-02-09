@@ -8,15 +8,20 @@ import org.apache.hc.client5.http.impl.classic.HttpClientBuilder
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager
 import org.apache.hc.client5.http.io.HttpClientConnectionManager
 
+private val log = mu.KotlinLogging.logger {  }
 /**
  * Adds observability to MaskinportenKlient using Micrometer (https://micrometer.io/)
  */
-class MicrometerMaskinportenKlientObservability(private val observationRegistry: ObservationRegistry, private val meterRegistry: MeterRegistry) : MaskinportenKlientObservability {
+class MicrometerMaskinportenKlientObservability(private val observationRegistry: ObservationRegistry?, private val meterRegistry: MeterRegistry) : MaskinportenKlientObservability {
     private var connectionManagerMeterBuilder: PoolingHttpClientConnectionManagerMetricsBinder? = null
 
     override fun createObservableHttpClientBuilder(): HttpClientBuilder {
-        return HttpClientBuilder.create()
-            .addExecInterceptorLast("micrometer", ObservationExecChainHandler(observationRegistry))
+        return HttpClientBuilder.create().apply {
+            observationRegistry?.run {
+                log.debug { "Enabling micrometer-tracing support for the httpclient" }
+                addExecInterceptorLast("micrometer", ObservationExecChainHandler(this))
+            }
+        }
     }
 
     override fun addObservabilityToConnectionManager(httpClientConnectionManager: HttpClientConnectionManager): HttpClientConnectionManager {
@@ -27,4 +32,22 @@ class MicrometerMaskinportenKlientObservability(private val observationRegistry:
         }
         return httpClientConnectionManager
     }
+
+    companion object {
+        @JvmStatic
+        fun builder(): MicrometerMaskinportenKlientObservabilityBuilder = MicrometerMaskinportenKlientObservabilityBuilder()
+    }
+
+
+}
+
+class MicrometerMaskinportenKlientObservabilityBuilder {
+    private var observationRegistry: ObservationRegistry? = null
+    private var meterRegistry: MeterRegistry? = null
+
+    fun withObservationRegistry(observationRegistry: ObservationRegistry) = apply { this.observationRegistry = observationRegistry }
+
+    fun withMeterRegistry(meterRegistry: MeterRegistry) = apply { this.meterRegistry = meterRegistry }
+
+    fun build() = MicrometerMaskinportenKlientObservability(observationRegistry, meterRegistry ?: error("MeterRegistry is required"))
 }

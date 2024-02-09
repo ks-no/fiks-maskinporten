@@ -33,8 +33,16 @@ class MaskinportenAutoConfigure {
     inner class Observability {
         @Bean
         @ConditionalOnBean(MeterRegistry::class, ObservationRegistry::class)
+        @ConditionalOnMissingBean
         fun micrometerMaskinportenKlientObservability(observationRegistry: ObservationRegistry, metricRegistry: MeterRegistry): MaskinportenKlientObservability {
             return MicrometerMaskinportenKlientObservability(observationRegistry, metricRegistry)
+        }
+
+        @Bean
+        @ConditionalOnBean(MeterRegistry::class)
+        @ConditionalOnMissingBean
+        fun micrometerMaskinportenKlientObservabilityWithoutTracing(metricRegistry: MeterRegistry): MaskinportenKlientObservability {
+            return MicrometerMaskinportenKlientObservability(null, metricRegistry)
         }
 
         @Bean
