@@ -177,7 +177,7 @@ class MaskinportenklientTest {
         final ObservationRegistry observationRegistry = ObservationRegistry.create();
         observationRegistry.observationConfig()
                 .observationHandler(new DefaultMeterObservationHandler(meterRegistry));
-        final var maskinportenKlientObservability = new MicrometerMaskinportenKlientObservability(observationRegistry, meterRegistry);
+        final var maskinportenKlientObservability = new MicrometerMaskinportenKlientObservability(observationRegistry);
         try (final ClientAndServer client = ClientAndServer.startClientAndServer()) {
             client.when(
                     request()

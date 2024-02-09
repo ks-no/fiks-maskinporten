@@ -19,6 +19,8 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Condition
 import org.springframework.context.annotation.ConditionContext
 import org.springframework.context.annotation.Conditional
+import org.springframework.core.Ordered
+import org.springframework.core.annotation.Order
 import org.springframework.core.env.get
 import org.springframework.core.type.AnnotatedTypeMetadata
 
@@ -32,22 +34,18 @@ class MaskinportenAutoConfigure {
     @AutoConfiguration
     inner class Observability {
         @Bean
-        @ConditionalOnBean(MeterRegistry::class, ObservationRegistry::class)
+        @ConditionalOnBean(ObservationRegistry::class)
         @ConditionalOnMissingBean
-        fun micrometerMaskinportenKlientObservability(observationRegistry: ObservationRegistry, metricRegistry: MeterRegistry): MaskinportenKlientObservability {
-            return MicrometerMaskinportenKlientObservability(observationRegistry, metricRegistry)
+        fun micrometerMaskinportenKlientObservability(observationRegistry: ObservationRegistry): MaskinportenKlientObservability {
+            return MicrometerMaskinportenKlientObservability(observationRegistry)
         }
 
         @Bean
-        @ConditionalOnBean(MeterRegistry::class)
         @ConditionalOnMissingBean
-        fun micrometerMaskinportenKlientObservabilityWithoutTracing(metricRegistry: MeterRegistry): MaskinportenKlientObservability {
-            return MicrometerMaskinportenKlientObservability(null, metricRegistry)
+        fun micrometerMaskinportenKlientObservabilityWithoutTracing(): MaskinportenKlientObservability {
+            return MicrometerMaskinportenKlientObservability.builder().build()
         }
 
-        @Bean
-        @ConditionalOnMissingBean(MaskinportenKlientObservability::class)
-        fun defaultMaskinportenKlientObservability(): MaskinportenKlientObservability = DefaultMaskinportenKlientObservability()
     }
 
     @AutoConfigureAfter(VirksomhetSertifikatAutoConfigure::class)

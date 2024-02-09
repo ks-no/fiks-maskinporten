@@ -19,12 +19,11 @@ public class MicrometerMaskinportenKlientObservabilityTest {
         final var meterRegistry = new SimpleMeterRegistry();
         final MicrometerMaskinportenKlientObservability maskinportenKlientObservability =
                 MicrometerMaskinportenKlientObservability.builder()
-                        .withMeterRegistry(meterRegistry)
                         .build();
         final HttpClientBuilder observableHttpClientBuilder = maskinportenKlientObservability.createObservableHttpClientBuilder();
-        assertThat(observableHttpClientBuilder.build()).satisfies(httpClient -> {
-            assertThat(httpClient).isNotNull();
-        });
+        maskinportenKlientObservability.bindTo(meterRegistry);
+        assertThat(observableHttpClientBuilder.build())
+                .satisfies(httpClient -> assertThat(httpClient).isNotNull());
     }
 
     @DisplayName("Create observable http client builder with tracing")
@@ -35,9 +34,9 @@ public class MicrometerMaskinportenKlientObservabilityTest {
         observationRegistry.observationConfig().observationHandler(new DefaultMeterObservationHandler(meterRegistry));
         final MicrometerMaskinportenKlientObservability maskinportenKlientObservability =
                 MicrometerMaskinportenKlientObservability.builder()
-                        .withMeterRegistry(meterRegistry)
                         .withObservationRegistry(observationRegistry)
                         .build();
+        maskinportenKlientObservability.bindTo(meterRegistry);
         final HttpClientBuilder observableHttpClientBuilder = maskinportenKlientObservability.createObservableHttpClientBuilder();
         assertThat(observableHttpClientBuilder.build()).satisfies(httpClient -> {
             assertThat(httpClient).isNotNull();
@@ -50,10 +49,10 @@ public class MicrometerMaskinportenKlientObservabilityTest {
         final var meterRegistry = new SimpleMeterRegistry();
         final MicrometerMaskinportenKlientObservability maskinportenKlientObservability =
                 MicrometerMaskinportenKlientObservability.builder()
-                        .withMeterRegistry(meterRegistry)
                         .build();
         try(final var connectionManager = PoolingHttpClientConnectionManagerBuilder.create().setMaxConnTotal(20).build()) {
             maskinportenKlientObservability.addObservabilityToConnectionManager(connectionManager);
+            maskinportenKlientObservability.bindTo(meterRegistry);
             assertThat(meterRegistry).satisfies(registry -> {
                 assertThat(registry.getMeters()).isNotEmpty();
                 assertThat(registry.get("httpcomponents.httpclient.pool.total.max")).satisfies(meter -> {
@@ -71,11 +70,11 @@ public class MicrometerMaskinportenKlientObservabilityTest {
         final var meterRegistry = new SimpleMeterRegistry();
         final MicrometerMaskinportenKlientObservability maskinportenKlientObservability =
                 MicrometerMaskinportenKlientObservability.builder()
-                        .withMeterRegistry(meterRegistry)
                         .build();
         try(var connectionManager = new BasicHttpClientConnectionManager()) {
             maskinportenKlientObservability.addObservabilityToConnectionManager(connectionManager);
         }
+        maskinportenKlientObservability.bindTo(meterRegistry);
         assertThat(meterRegistry.getMeters()).isEmpty();
         meterRegistry.close();
     }

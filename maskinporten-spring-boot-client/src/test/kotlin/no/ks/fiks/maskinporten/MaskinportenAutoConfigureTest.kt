@@ -51,8 +51,7 @@ class MaskinportenAutoConfigureTest : StringSpec() {
                 .withBean(VirksomhetSertifikater::class.java, { virksomhetSertifikater })
                 .run { context ->
                     assertThat(context).hasSingleBean(Maskinportenklient::class.java)
-                    assertThat(context).hasSingleBean(MaskinportenKlientObservability::class.java)
-                    assertThat(context).doesNotHaveBean(MicrometerMaskinportenKlientObservability::class.java)
+                    assertThat(context).hasSingleBean(MicrometerMaskinportenKlientObservability::class.java)
                 }
         }
 
