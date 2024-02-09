@@ -13,14 +13,18 @@ import net.jodah.expiringmap.ExpiringValue
 import no.ks.fiks.maskinporten.error.MaskinportenClientTokenRequestException
 import no.ks.fiks.maskinporten.error.MaskinportenTokenRequestException
 import no.ks.fiks.maskinporten.error.MaskinportenTokenTemporarilyUnavailableException
+import no.ks.fiks.maskinporten.observability.DefaultMaskinportenKlientObservability
+import no.ks.fiks.maskinporten.observability.MaskinportenKlientObservability
 import org.apache.hc.client5.http.config.RequestConfig
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder
+import org.apache.hc.client5.http.io.HttpClientConnectionManager
 import org.apache.hc.core5.http.*
 import org.apache.hc.core5.http.io.HttpClientResponseHandler
 import org.apache.hc.core5.http.io.support.ClassicRequestBuilder
+import java.io.Closeable
 import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.security.KeyStore
@@ -46,11 +50,12 @@ private fun scopesToCollection(vararg scopes: String): Collection<String> {
 class Maskinportenklient(
     privateKey: PrivateKey,
     jwsHeaderProvider: JWSHeaderProvider,
-    private val properties: MaskinportenklientProperties
-) : MaskinportenklientOperations {
-    private val jwsHeader: JWSHeader
-    private val signer: JWSSigner
-    private val connectionManager: PoolingHttpClientConnectionManager?
+    private val properties: MaskinportenklientProperties,
+    private val maskinportenKlientObservability: MaskinportenKlientObservability = DefaultMaskinportenKlientObservability()
+) : MaskinportenklientOperations, AutoCloseable {
+    private val jwsHeader: JWSHeader = jwsHeaderProvider.buildJWSHeader()
+    private val signer: JWSSigner = RSASSASigner(privateKey)
+    private val connectionManager: HttpClientConnectionManager?
     private val map: ExpiringMap<AccessTokenRequest, String>
 
     @Deprecated("Use MaskinportenklientBuilder")
@@ -77,9 +82,11 @@ class Maskinportenklient(
     )
 
     init {
-        jwsHeader = jwsHeaderProvider.buildJWSHeader()
-        signer = RSASSASigner(privateKey)
-        connectionManager = if (properties.providedHttpClient != null) createConnectionManager() else null
+        connectionManager = if(properties.providedHttpClient == null) {
+            createConnectionManager()
+        } else {
+            null
+        }
         map = ExpiringMap.builder()
             .variableExpiration()
             .expiringEntryLoader(ExpiringEntryLoader { tokenRequest: AccessTokenRequest ->
@@ -161,6 +168,10 @@ class Maskinportenklient(
         return getTokenForRequest(request)
     }
 
+    override fun close() {
+        connectionManager?.close()
+    }
+
     private fun getTokenForRequest(accessTokenRequest: AccessTokenRequest): String {
         require(accessTokenRequest.scopes.isNotEmpty()) { "Minst ett scope må oppgies" }
         return map[accessTokenRequest] ?: throw IllegalStateException("En ukjent feil skjedde ved forsøk på å hente token fra Maskinporten")
@@ -217,52 +228,49 @@ class Maskinportenklient(
             log.debug { """Acquiring access token from "$tokenEndpointUrlString"""" }
             val startTime = System.currentTimeMillis()
             return actuallyExecuteRequest { httpClient ->
-                httpClient.execute(createHttpRequest(postData), object : HttpClientResponseHandler<String?> {
-                    override fun handleResponse(classicHttpResponse: ClassicHttpResponse): String? {
-                        val responseCode = classicHttpResponse.code
-                        val timeUsed = System.currentTimeMillis() - startTime
-                        log.debug { "Access token response received in $timeUsed ms with status $responseCode" }
-                        if (timeUsed > 5000) {
-                            log.warn { "Access token response received in $timeUsed ms with status $responseCode" }
-                        } else if (timeUsed > 1000) {
-                            log.info { "Access token response received in $timeUsed ms with status $responseCode" }
-                        }
+                httpClient.execute(createHttpRequest(postData)) { classicHttpResponse ->
+                    val responseCode = classicHttpResponse.code
+                    val timeUsed = System.currentTimeMillis() - startTime
+                    log.debug { "Access token response received in $timeUsed ms with status $responseCode" }
+                    if (timeUsed > 5000) {
+                        log.warn { "Access token response received in $timeUsed ms with status $responseCode" }
+                    } else if (timeUsed > 1000) {
+                        log.info { "Access token response received in $timeUsed ms with status $responseCode" }
+                    }
 
-                        logConnectionManager(timeUsed, connectionManager)
-                        return if (HttpStatus.SC_OK == responseCode) {
-                            classicHttpResponse.entity.content?.use { contentStream ->
-                                contentStream.bufferedReader().use { it.readText() }
+                    if (HttpStatus.SC_OK == responseCode) {
+                        classicHttpResponse.entity.content?.use { contentStream ->
+                            contentStream.bufferedReader().use { it.readText() }
+                        }
+                    } else {
+                        val errorFromMaskinporten: String =
+                            classicHttpResponse.entity.content.use { errorContentStream ->
+                                errorContentStream.bufferedReader().use { it.readText() }
                             }
+                        log.warn { "Failed to get token: $errorFromMaskinporten" }
+                        val exceptionMessage =
+                            "Http response code: $responseCode, url: '$tokenEndpointUrlString', message: '$errorFromMaskinporten'"
+                        if (responseCode >= HttpStatus.SC_BAD_REQUEST && responseCode < HttpStatus.SC_INTERNAL_SERVER_ERROR) {
+                            throw MaskinportenClientTokenRequestException(
+                                exceptionMessage,
+                                responseCode,
+                                errorFromMaskinporten
+                            )
+                        } else if (responseCode == HttpStatus.SC_SERVICE_UNAVAILABLE) {
+                            throw MaskinportenTokenTemporarilyUnavailableException(
+                                exceptionMessage,
+                                responseCode,
+                                errorFromMaskinporten
+                            )
                         } else {
-                            val errorFromMaskinporten: String =
-                                classicHttpResponse.entity.content.use { errorContentStream ->
-                                    errorContentStream.bufferedReader().use { it.readText() }
-                                }
-                            log.warn { "Failed to get token: $errorFromMaskinporten" }
-                            val exceptionMessage =
-                                "Http response code: $responseCode, url: '$tokenEndpointUrlString', message: '$errorFromMaskinporten'"
-                            if (responseCode >= HttpStatus.SC_BAD_REQUEST && responseCode < HttpStatus.SC_INTERNAL_SERVER_ERROR) {
-                                throw MaskinportenClientTokenRequestException(
-                                    exceptionMessage,
-                                    responseCode,
-                                    errorFromMaskinporten
-                                )
-                            } else if (responseCode == HttpStatus.SC_SERVICE_UNAVAILABLE) {
-                                throw MaskinportenTokenTemporarilyUnavailableException(
-                                    exceptionMessage,
-                                    responseCode,
-                                    errorFromMaskinporten
-                                )
-                            } else {
-                                throw MaskinportenTokenRequestException(
-                                    exceptionMessage,
-                                    responseCode,
-                                    errorFromMaskinporten
-                                )
-                            }
+                            throw MaskinportenTokenRequestException(
+                                exceptionMessage,
+                                responseCode,
+                                errorFromMaskinporten
+                            )
                         }
                     }
-                })
+                }
             }
         }
     }
@@ -271,28 +279,20 @@ class Maskinportenklient(
         properties.providedHttpClient?.let { httpClient ->
             log.debug { "Executing request using provided httpClient" }
             httpRequestResponse(httpClient)
-        } ?: HttpClientBuilder.create()
-            .disableAutomaticRetries()
-            .disableRedirectHandling()
-            .disableAuthCaching()
-            .setDefaultRequestConfig(RequestConfig.custom().setConnectionRequestTimeout(properties.timeoutMillis.toLong(), TimeUnit.MILLISECONDS).build())
-            .setConnectionManager(connectionManager)
-            .build().use {
+        } ?: createClient().use {
                 httpRequestResponse(it)
             }
 
-    private fun createConnectionManager(): PoolingHttpClientConnectionManager? =
-        PoolingHttpClientConnectionManagerBuilder.create().setMaxConnPerRoute(10).build()
+    private fun createClient(): CloseableHttpClient = maskinportenKlientObservability.createObservableHttpClientBuilder()
+        .disableAutomaticRetries()
+        .disableRedirectHandling()
+        .disableAuthCaching()
+        .setDefaultRequestConfig(RequestConfig.custom().setConnectionRequestTimeout(properties.timeoutMillis.toLong(), TimeUnit.MILLISECONDS).build())
+        .setConnectionManager(connectionManager)
+        .build()
 
-    private fun logConnectionManager(timeUsed: Long, connectionManager: PoolingHttpClientConnectionManager?) {
-        if (timeUsed > 1000 && connectionManager != null) {
-            log.info {
-                """Connection pool has ${connectionManager.totalStats.available} available connections of ${connectionManager.totalStats.max} connections.
-                    The maximum connections per route are ${connectionManager.defaultMaxPerRoute}. 
-                    ${connectionManager.totalStats.leased} connections are leased and ${connectionManager.totalStats.pending} connections are pending."""
-            }
-        }
-    }
+    private fun createConnectionManager(): HttpClientConnectionManager =
+        maskinportenKlientObservability.addObservabilityToConnectionManager(PoolingHttpClientConnectionManagerBuilder.create().setMaxConnPerRoute(10).build())
 
     private fun createHttpRequest(entityBuffer: ByteArray): ClassicHttpRequest {
         return ClassicRequestBuilder.post(properties.tokenEndpoint)
@@ -332,10 +332,14 @@ class MaskinportenklientBuilder {
     private var privateKey: PrivateKey? = null
     private var jwsHeaderProvider: JWSHeaderProvider? = null
     private var properties: MaskinportenklientProperties? = null
+    private var maskinportenKlientObservability: MaskinportenKlientObservability = DefaultMaskinportenKlientObservability()
 
     fun withPrivateKey(privateKey: PrivateKey) = this.also { this.privateKey = privateKey }
 
     fun withProperties(properties: MaskinportenklientProperties) = this.also { this.properties = properties }
+
+    fun havingObservabilitySupport(maskinportenKlientObservability: MaskinportenKlientObservability) =
+        this.also { this.maskinportenKlientObservability = maskinportenKlientObservability }
 
     fun usingVirksomhetssertifikat(certificate: X509Certificate) = this.also {
         if (this.jwsHeaderProvider != null) log.warn { "Overriding already set jwsHeaderProvider with virksomhetssertifikat" }
@@ -353,8 +357,9 @@ class MaskinportenklientBuilder {
     }
 
     fun build() : Maskinportenklient = Maskinportenklient(
-        privateKey ?: throw IllegalArgumentException("""The "privateKey" property can not be null"""),
-        jwsHeaderProvider ?: throw IllegalArgumentException("""Must configure client to use either virksomhetssertifikat, asymmetric key or custom JWSHeaderProvider"""),
-        properties ?: throw IllegalArgumentException("""The "properties" property can not be null"""),
+        privateKey = privateKey ?: throw IllegalArgumentException("""The "privateKey" property can not be null"""),
+        jwsHeaderProvider = jwsHeaderProvider ?: throw IllegalArgumentException("""Must configure client to use either virksomhetssertifikat, asymmetric key or custom JWSHeaderProvider"""),
+        properties = properties ?: throw IllegalArgumentException("""The "properties" property can not be null"""),
+        maskinportenKlientObservability = maskinportenKlientObservability
     )
 }
