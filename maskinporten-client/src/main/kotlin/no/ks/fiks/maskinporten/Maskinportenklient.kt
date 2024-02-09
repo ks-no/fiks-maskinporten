@@ -52,7 +52,7 @@ class Maskinportenklient(
     jwsHeaderProvider: JWSHeaderProvider,
     private val properties: MaskinportenklientProperties,
     private val maskinportenKlientObservability: MaskinportenKlientObservability = DefaultMaskinportenKlientObservability()
-) : MaskinportenklientOperations, AutoCloseable {
+) : MaskinportenklientOperations {
     private val jwsHeader: JWSHeader = jwsHeaderProvider.buildJWSHeader()
     private val signer: JWSSigner = RSASSASigner(privateKey)
     private val connectionManager: HttpClientConnectionManager?
@@ -166,10 +166,6 @@ class Maskinportenklient(
 
     override fun getAccessToken(request: AccessTokenRequest): String {
         return getTokenForRequest(request)
-    }
-
-    override fun close() {
-        connectionManager?.close()
     }
 
     private fun getTokenForRequest(accessTokenRequest: AccessTokenRequest): String {
