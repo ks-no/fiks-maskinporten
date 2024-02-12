@@ -170,6 +170,29 @@ class MaskinportenklientTest {
         }
     }
 
+    @DisplayName("Generate access token repeatedly")
+    @Test
+    void getAccessTokenRepeatedly() {
+        try (final ClientAndServer client = ClientAndServer.startClientAndServer()) {
+            client.when(
+                    request()
+                            .withSecure(false)
+                            .withMethod(HttpMethod.POST.name())
+                            .withPath("/token")
+                            .withBody(
+                                    params(
+                                            param("grant_type", JWT_BEARER_GRANT)
+                                    )
+                            )
+            ).respond(callback().withCallbackClass(OidcMockExpectation.class));
+            Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()));
+            for(int i = 0; i < 5; i++) {
+                assertThat(maskinportenklient.getAccessToken(AccessTokenRequest.builder().scope(SCOPE).build())).isEqualTo(OidcMockExpectation.previousJwt);
+            }
+
+        }
+    }
+
     @DisplayName("Generate access token while observing with micrometer")
     @Test
     void getAccessTokenWithMicrometerObservability() {
