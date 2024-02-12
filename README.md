@@ -3,6 +3,7 @@
 [![Maven Central](https://img.shields.io/maven-central/v/no.ks.fiks/maskinporten)](https://search.maven.org/artifact/no.ks.fiks/maskinporten)
 ![GitHub Release Date](https://img.shields.io/github/release-date/ks-no/fiks-maskinporten.svg)
 ![GitHub Last Commit](https://img.shields.io/github/last-commit/ks-no/fiks-maskinporten.svg)
+[![CodeQL](https://github.com/ks-no/fiks-maskinporten/actions/workflows/codeql-analysis.yml/badge.svg?branch=main)](https://github.com/ks-no/fiks-maskinporten/actions/workflows/codeql-analysis.yml)
 
 Dette er en klient som kobler seg opp til Maskinporten (https://difi.github.io/idporten-oidc-dokumentasjon/oidc_auth_server-to-server-oauth2.html) og ber om en JWT-access-token basert på et virksomhetssertifikat, en issuer (konto hos Difi) og ett eller flere scopes.
 
