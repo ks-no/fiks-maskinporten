@@ -55,7 +55,7 @@ class Maskinportenklient(
 ) : MaskinportenklientOperations {
     private val jwsHeader: JWSHeader = jwsHeaderProvider.buildJWSHeader()
     private val signer: JWSSigner = RSASSASigner(privateKey)
-    private val connectionManager: HttpClientConnectionManager?
+    private val httpClient: CloseableHttpClient
     private val map: ExpiringMap<AccessTokenRequest, String>
 
     @Deprecated("Use MaskinportenklientBuilder")
@@ -82,11 +82,7 @@ class Maskinportenklient(
     )
 
     init {
-        connectionManager = if(properties.providedHttpClient == null) {
-            createConnectionManager()
-        } else {
-            null
-        }
+        httpClient = properties.providedHttpClient ?: createClient()
         map = ExpiringMap.builder()
             .variableExpiration()
             .expiringEntryLoader(ExpiringEntryLoader { tokenRequest: AccessTokenRequest ->
@@ -272,19 +268,14 @@ class Maskinportenklient(
     }
 
     private fun actuallyExecuteRequest(httpRequestResponse: (CloseableHttpClient) -> String?): String? =
-        properties.providedHttpClient?.let { httpClient ->
-            log.debug { "Executing request using provided httpClient" }
-            httpRequestResponse(httpClient)
-        } ?: createClient().use {
-                httpRequestResponse(it)
-            }
+        httpRequestResponse(httpClient)
 
     private fun createClient(): CloseableHttpClient = maskinportenKlientObservability.createObservableHttpClientBuilder()
         .disableAutomaticRetries()
         .disableRedirectHandling()
         .disableAuthCaching()
         .setDefaultRequestConfig(RequestConfig.custom().setConnectionRequestTimeout(properties.timeoutMillis.toLong(), TimeUnit.MILLISECONDS).build())
-        .setConnectionManager(connectionManager)
+        .setConnectionManager(createConnectionManager())
         .build()
 
     private fun createConnectionManager(): HttpClientConnectionManager =
