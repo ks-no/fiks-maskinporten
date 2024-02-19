@@ -44,7 +44,7 @@
         <expiringmap.version>0.5.11</expiringmap.version>
         <mockserver.version>5.15.0</mockserver.version>
         <lang-tag.version>1.7</lang-tag.version>
-        <oauth2-oidc-sdk.version>11.9.1</oauth2-oidc-sdk.version>
+        <oauth2-oidc-sdk.version>11.10</oauth2-oidc-sdk.version>
         <apache-httpclient.version>5.3.1</apache-httpclient.version>
         <bouncycastle.version>1.77</bouncycastle.version>
 
