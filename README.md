@@ -66,8 +66,8 @@ public class Application {
                         MaskinportenklientProperties.builder()
                                 .numberOfSecondsLeftBeforeExpire(10)
                                 .issuer("<klient-id-utdelt-av-difi>")
-                                .audience("https://ver2.maskinporten.no/")
-                                .tokenEndpoint("https://ver2.maskinporten.no/token")
+                                .audience("https://test.maskinporten.no/")
+                                .tokenEndpoint("https://test.maskinporten.no/token")
                                 .build()
                 )
                 .usingVirksomhetssertifikat((X509Certificate) keyStore.getCertificate(alias))
@@ -92,8 +92,8 @@ val keyStore: Keystore = ...
 val alias = "mykey"
 val password = "keypassword"
 val maskinportenklientProperties = MaskinportenklientProperties(
-            audience = "https://ver2.maskinporten.no/",
-            tokenEndpoint = "https://ver2.maskinporten.no/token",
+            audience = "https://test.maskinporten.no/",
+            tokenEndpoint = "https://test.maskinporten.no/token",
             issuer = "<klient-id-utdelt-av-difi>",
             numberOfSecondsLeftBeforeExpire = 10)
 val klient = Maskinportenklient(keyStore, "mykey", "keypassword".toCharArray(), maskinportenklientProperties)
@@ -111,7 +111,7 @@ Maskinportenklient maskinporten = Maskinportenklient.builder()
     .withPrivateKey((PrivateKey) keyStore.getKey(alias, keyStorePassword))
     .withProperties(
         MaskinportenklientProperties.builder()
-            .audience("https://ver2.maskinporten.no/")
+            .audience("https://test.maskinporten.no/")
             .tokenEndpoint(tokenEndpoint)
             .issuer("77c0a0ba-d20d-424c-b5dd-f1c63da07fc4")
             .numberOfSecondsLeftBeforeExpire(10)
