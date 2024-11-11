@@ -39,7 +39,7 @@
 
         <maven-deploy-plugin.version>2.8.2</maven-deploy-plugin.version>
 
-        <nimbus-jose-jwt.version>9.40</nimbus-jose-jwt.version>
+        <nimbus-jose-jwt.version>9.46</nimbus-jose-jwt.version>
         <virksomhetssertifikat.version>4.0.1</virksomhetssertifikat.version>
         <expiringmap.version>0.5.11</expiringmap.version>
         <mockserver.version>5.15.0</mockserver.version>
