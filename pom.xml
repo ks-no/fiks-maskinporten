@@ -7,7 +7,7 @@
     <parent>
         <groupId>no.ks.fiks.pom</groupId>
         <artifactId>fiks-ekstern-kotlin-superpom</artifactId>
-        <version>1.2.5</version>
+        <version>1.2.7</version>
     </parent>
 
     <groupId>no.ks.fiks</groupId>
@@ -46,6 +46,7 @@
         <lang-tag.version>1.7</lang-tag.version>
         <oauth2-oidc-sdk.version>11.20.1</oauth2-oidc-sdk.version>
         <apache-httpclient.version>5.4.1</apache-httpclient.version>
+        <apache-httpcore.version>5.3.1</apache-httpcore.version>
         <bouncycastle.version>1.79</bouncycastle.version>
 
         <junit.version>5.11.3</junit.version>
@@ -87,6 +88,16 @@
                 <groupId>org.apache.httpcomponents.client5</groupId>
                 <artifactId>httpclient5</artifactId>
                 <version>${apache-httpclient.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.httpcomponents.core5</groupId>
+                <artifactId>httpcore5</artifactId>
+                <version>${apache-httpcore.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.httpcomponents.core5</groupId>
+                <artifactId>httpcore5-h2</artifactId>
+                <version>${apache-httpcore.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.junit</groupId>
