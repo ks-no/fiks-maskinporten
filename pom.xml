@@ -50,7 +50,7 @@
         <bouncycastle.version>1.79</bouncycastle.version>
 
         <junit.version>5.11.3</junit.version>
-        <assertj.version>3.26.3</assertj.version>
+        <assertj.version>3.27.2</assertj.version>
         <mockk.version>1.13.13</mockk.version>
         <mockito.version>5.14.2</mockito.version>
         <micrometer.version>1.14.2</micrometer.version>
