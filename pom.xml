@@ -47,7 +47,7 @@
         <oauth2-oidc-sdk.version>11.20.1</oauth2-oidc-sdk.version>
         <apache-httpclient.version>5.4.1</apache-httpclient.version>
         <apache-httpcore.version>5.3.1</apache-httpcore.version>
-        <bouncycastle.version>1.79</bouncycastle.version>
+        <bouncycastle.version>1.80</bouncycastle.version>
 
         <junit.version>5.11.3</junit.version>
         <assertj.version>3.26.3</assertj.version>
