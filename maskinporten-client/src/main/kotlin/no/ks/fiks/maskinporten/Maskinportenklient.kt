@@ -15,16 +15,15 @@ import no.ks.fiks.maskinporten.error.MaskinportenTokenRequestException
 import no.ks.fiks.maskinporten.error.MaskinportenTokenTemporarilyUnavailableException
 import no.ks.fiks.maskinporten.observability.DefaultMaskinportenKlientObservability
 import no.ks.fiks.maskinporten.observability.MaskinportenKlientObservability
+import org.apache.hc.client5.http.config.ConnectionConfig
 import org.apache.hc.client5.http.config.RequestConfig
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient
-import org.apache.hc.client5.http.impl.classic.HttpClientBuilder
-import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder
 import org.apache.hc.client5.http.io.HttpClientConnectionManager
 import org.apache.hc.core5.http.*
-import org.apache.hc.core5.http.io.HttpClientResponseHandler
+import org.apache.hc.core5.http.io.SocketConfig
 import org.apache.hc.core5.http.io.support.ClassicRequestBuilder
-import java.io.Closeable
+import org.apache.hc.core5.util.Timeout
 import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.security.KeyStore
@@ -43,6 +42,8 @@ private const val CLAIM_RESOURCE = "resource"
 private const val CLAIM_PID = "pid"
 private const val MDC_JTIID = "jtiId"
 
+private const val MAX_CONNECTIONS = 10
+
 private fun scopesToCollection(vararg scopes: String): Collection<String> {
     return scopes.toList()
 }
@@ -57,6 +58,8 @@ class Maskinportenklient(
     private val signer: JWSSigner = RSASSASigner(privateKey)
     private val httpClient: CloseableHttpClient
     private val map: ExpiringMap<AccessTokenRequest, String>
+
+    private val timeout = Timeout.ofMilliseconds(properties.timeoutMillis.toLong())
 
     @Deprecated("Use MaskinportenklientBuilder")
     constructor(
@@ -274,12 +277,34 @@ class Maskinportenklient(
         .disableAutomaticRetries()
         .disableRedirectHandling()
         .disableAuthCaching()
-        .setDefaultRequestConfig(RequestConfig.custom().setConnectionRequestTimeout(properties.timeoutMillis.toLong(), TimeUnit.MILLISECONDS).build())
+        .setDefaultRequestConfig(createRequestConfig())
         .setConnectionManager(createConnectionManager())
         .build()
 
+    private fun createRequestConfig(): RequestConfig =
+        RequestConfig.custom()
+            .setConnectionRequestTimeout(timeout)
+            .setResponseTimeout(timeout)
+            .build()
+
     private fun createConnectionManager(): HttpClientConnectionManager =
-        maskinportenKlientObservability.addObservabilityToConnectionManager(PoolingHttpClientConnectionManagerBuilder.create().setMaxConnPerRoute(10).build())
+        maskinportenKlientObservability.addObservabilityToConnectionManager(
+            PoolingHttpClientConnectionManagerBuilder.create()
+                .setDefaultConnectionConfig(
+                    ConnectionConfig.custom()
+                        .setConnectTimeout(timeout)
+                        .setSocketTimeout(timeout)
+                        .build()
+                )
+                .setDefaultSocketConfig(
+                    SocketConfig.custom()
+                        .setSoTimeout(timeout)
+                        .build()
+                )
+                .setMaxConnTotal(MAX_CONNECTIONS)
+                .setMaxConnPerRoute(MAX_CONNECTIONS)
+                .build()
+        )
 
     private fun createHttpRequest(entityBuffer: ByteArray): ClassicHttpRequest {
         return ClassicRequestBuilder.post(properties.tokenEndpoint)
