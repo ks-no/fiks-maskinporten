@@ -1,9 +1,10 @@
 package no.ks.fiks.maskinporten
 
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient
+import java.time.Duration
 import java.util.concurrent.TimeUnit
 
-val DEFAULT_TIMEOUT = TimeUnit.MINUTES.toMillis(1L).toInt()
+val DEFAULT_TIMEOUT = Duration.ofSeconds(10).toMillis().toInt()
 
 data class MaskinportenklientProperties(
 
