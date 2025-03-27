@@ -45,7 +45,7 @@
         <mockserver.version>5.15.0</mockserver.version>
         <lang-tag.version>1.7</lang-tag.version>
         <oauth2-oidc-sdk.version>11.23</oauth2-oidc-sdk.version>
-        <apache-httpclient.version>5.4.2</apache-httpclient.version>
+        <apache-httpclient.version>5.4.3</apache-httpclient.version>
         <apache-httpcore.version>5.3.3</apache-httpcore.version>
         <bouncycastle.version>1.80</bouncycastle.version>
 
