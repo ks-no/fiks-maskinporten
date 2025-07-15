@@ -53,7 +53,7 @@
         <assertj.version>3.27.3</assertj.version>
         <mockk.version>1.14.2</mockk.version>
         <mockito.version>5.18.0</mockito.version>
-        <micrometer.version>1.15.1</micrometer.version>
+        <micrometer.version>1.15.2</micrometer.version>
         <dropwizard-metrics.version>4.2.32</dropwizard-metrics.version>
     </properties>
 
