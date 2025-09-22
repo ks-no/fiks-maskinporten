@@ -46,7 +46,7 @@
         <lang-tag.version>1.7</lang-tag.version>
         <oauth2-oidc-sdk.version>11.28</oauth2-oidc-sdk.version>
         <apache-httpclient.version>5.5</apache-httpclient.version>
-        <apache-httpcore.version>5.3.5</apache-httpcore.version>
+        <apache-httpcore.version>5.3.6</apache-httpcore.version>
         <bouncycastle.version>1.81</bouncycastle.version>
 
         <junit.version>5.13.4</junit.version>
