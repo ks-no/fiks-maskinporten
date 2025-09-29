@@ -7,7 +7,7 @@
     <parent>
         <groupId>no.ks.fiks.pom</groupId>
         <artifactId>fiks-ekstern-kotlin-superpom</artifactId>
-        <version>1.5.0</version>
+        <version>1.7.0</version>
     </parent>
 
     <groupId>no.ks.fiks</groupId>
@@ -40,21 +40,29 @@
         <maven-deploy-plugin.version>2.8.2</maven-deploy-plugin.version>
 
         <nimbus-jose-jwt.version>10.5</nimbus-jose-jwt.version>
-        <virksomhetssertifikat.version>4.0.3</virksomhetssertifikat.version>
+        <virksomhetssertifikat.version>4.0.4</virksomhetssertifikat.version>
         <expiringmap.version>0.5.11</expiringmap.version>
         <mockserver.version>5.15.0</mockserver.version>
         <lang-tag.version>1.7</lang-tag.version>
-        <oauth2-oidc-sdk.version>11.28</oauth2-oidc-sdk.version>
-        <apache-httpclient.version>5.5</apache-httpclient.version>
+        
         <apache-httpcore.version>5.3.6</apache-httpcore.version>
-        <bouncycastle.version>1.81</bouncycastle.version>
+
+    
+        <apache-httpclient.version>5.5.1</apache-httpclient.version>
+
+        <oauth2-oidc-sdk.version>11.29.1</oauth2-oidc-sdk.version>
+       
+
+        
+        <bouncycastle.version>1.82</bouncycastle.version>
+
 
         <junit.version>5.13.4</junit.version>
-        <assertj.version>3.27.4</assertj.version>
+        <assertj.version>3.27.6</assertj.version>
         <mockk.version>1.14.5</mockk.version>
-        <mockito.version>5.19.0</mockito.version>
+        <mockito.version>5.20.0</mockito.version>
         <micrometer.version>1.15.4</micrometer.version>
-        <dropwizard-metrics.version>4.2.36</dropwizard-metrics.version>
+        <dropwizard-metrics.version>4.2.37</dropwizard-metrics.version>
     </properties>
 
     <dependencyManagement>
