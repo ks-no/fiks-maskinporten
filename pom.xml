@@ -59,7 +59,7 @@
 
         <junit.version>6.0.0</junit.version>
         <assertj.version>3.27.6</assertj.version>
-        <mockk.version>1.14.5</mockk.version>
+        <mockk.version>1.14.6</mockk.version>
         <mockito.version>5.20.0</mockito.version>
         <micrometer.version>1.15.4</micrometer.version>
         <dropwizard-metrics.version>4.2.37</dropwizard-metrics.version>
