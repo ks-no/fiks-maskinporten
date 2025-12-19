@@ -45,7 +45,7 @@
         <mockserver.version>5.15.0</mockserver.version>
         <lang-tag.version>1.7</lang-tag.version>
         
-        <apache-httpcore.version>5.3.6</apache-httpcore.version>
+        <apache-httpcore.version>5.4</apache-httpcore.version>
 
     
         <apache-httpclient.version>5.5.1</apache-httpclient.version>
