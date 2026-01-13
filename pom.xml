@@ -7,7 +7,7 @@
     <parent>
         <groupId>no.ks.fiks.pom</groupId>
         <artifactId>fiks-ekstern-kotlin-superpom</artifactId>
-        <version>1.7.2</version>
+        <version>1.8.0</version>
     </parent>
 
     <groupId>no.ks.fiks</groupId>
@@ -40,7 +40,7 @@
         <maven-deploy-plugin.version>2.8.2</maven-deploy-plugin.version>
 
         <nimbus-jose-jwt.version>10.7</nimbus-jose-jwt.version>
-        <virksomhetssertifikat.version>4.0.6</virksomhetssertifikat.version>
+        <virksomhetssertifikat.version>4.1.0</virksomhetssertifikat.version>
         <expiringmap.version>0.5.11</expiringmap.version>
         <mockserver.version>5.15.0</mockserver.version>
         <lang-tag.version>1.7</lang-tag.version>
