@@ -1,0 +1,35 @@
+name: Release, build and deploy library
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'version number to deploy'
+        required: true
+
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: release-build-deploy-${{ github.event.inputs.version }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: [self-hosted, x64]
+    timeout-minutes: 30
+    steps:
+      - name: Release, build and deploy
+        uses: ks-no/github-actions-public/public-java-maven@main
+        with:
+          version: ${{ github.event.inputs.version }}
+          is_release: 'true'
+          java_version: 'java25'
+          ks_github_app_id: ${{ vars.KS_RUNNER_APP_ID }}
+          ks_github_app_private_key: ${{ secrets.KS_RUNNER_PRIVATE_KEY }}
+          dependency_track_api_key: ${{ secrets.DEPENDENCY_TRACK_API_KEY }}
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          artifactory_username: ${{ secrets.ARTIFACTORY_USERNAME }}
+          artifactory_password: ${{ secrets.ARTIFACTORY_PASSWORD }}

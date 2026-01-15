@@ -1,0 +1,40 @@
+name: Autobuild Libraries
+
+on:
+  push:
+    branches:
+      - '**'
+      - '!dependabot/**' # Ignore pushes to dependabot branches
+      - '!combined-prs-branch' # Ignore pushes to dependabot branches
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: autobuild-lib-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # This condition prevents double builds. It runs the job if:
+    # 1. The event is a pull_request.
+    # 2. The event is a push to a branch that does NOT have an open pull request.
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.head_ref == '')
+    runs-on: [self-hosted, x64]
+    timeout-minutes: 30
+    steps:
+      - name: Build and publish library
+        uses: ks-no/github-actions-public/public-java-maven@main
+        with:
+          java_version: '25'
+          is_release: false
+          ks_github_app_id: ${{ vars.KS_RUNNER_APP_ID }}
+          ks_github_app_private_key: ${{ secrets.KS_RUNNER_PRIVATE_KEY }}
+          dependency_track_api_key: ${{ secrets.DEPENDENCY_TRACK_API_KEY }}
+          artifactory_username: ${{ secrets.ARTIFACTORY_USERNAME }}
+          artifactory_password: ${{ secrets.ARTIFACTORY_PASSWORD }}
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
