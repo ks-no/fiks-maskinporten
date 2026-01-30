@@ -50,7 +50,7 @@
     
         <apache-httpclient.version>5.6</apache-httpclient.version>
 
-        <oauth2-oidc-sdk.version>11.31.1</oauth2-oidc-sdk.version>
+        <oauth2-oidc-sdk.version>11.32</oauth2-oidc-sdk.version>
        
 
         
@@ -58,11 +58,11 @@
 
 
         <junit.version>6.0.2</junit.version>
-        <assertj.version>3.27.6</assertj.version>
-        <mockk.version>1.14.7</mockk.version>
+        <assertj.version>3.27.7</assertj.version>
+        <mockk.version>1.14.9</mockk.version>
         <mockito.version>5.21.0</mockito.version>
         <micrometer.version>1.16.2</micrometer.version>
-        <dropwizard-metrics.version>4.2.37</dropwizard-metrics.version>
+        <dropwizard-metrics.version>4.2.38</dropwizard-metrics.version>
     </properties>
 
     <dependencyManagement>
