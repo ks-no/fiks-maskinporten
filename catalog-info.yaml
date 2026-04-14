@@ -1,0 +1,67 @@
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: fiks-maskinporten
+  title: Fiks Maskinporten
+  description: >
+    Klientbibliotek for håndtering av Maskinporten-tokens basert på virksomhetssertifikat.
+    Tilbyr Java/Kotlin-klienter og Spring Boot-autoconfigurasjon for integrasjon med
+    Maskinporten. Ikke en deployert tjeneste, men et bibliotek brukt av andre tjenester
+    på Fiks-plattformen.
+  annotations:
+    github.com/project-slug: ks-no/fiks-maskinporten
+    backstage.io/techdocs-ref: dir:.
+  tags:
+    - java
+    - kotlin
+    - spring-boot
+    - library
+    - maskinporten
+spec:
+  owner: group:team-tilgang
+  lifecycle: production
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: maskinporten-client
+  title: Maskinporten Client
+  description: >
+    Java/Kotlin-klientbibliotek for å hente og cache Maskinporten-tokens
+    ved hjelp av virksomhetssertifikat.
+  annotations:
+    github.com/project-slug: ks-no/fiks-maskinporten
+    backstage.io/techdocs-ref: dir:.
+  tags:
+    - java
+    - kotlin
+    - library
+    - maskinporten
+spec:
+  type: library
+  owner: group:team-tilgang
+  lifecycle: production
+  system: fiks-maskinporten
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: maskinporten-spring-boot-client
+  title: Maskinporten Spring Boot Client
+  description: >
+    Spring Boot autoconfiguration for maskinporten-client. Gjør det enkelt å
+    konfigurere Maskinporten-integrasjon i Spring Boot-applikasjoner via properties.
+  annotations:
+    github.com/project-slug: ks-no/fiks-maskinporten
+    backstage.io/techdocs-ref: dir:.
+  tags:
+    - java
+    - kotlin
+    - spring-boot
+    - library
+    - maskinporten
+spec:
+  type: library
+  owner: group:team-tilgang
+  lifecycle: production
+  system: fiks-maskinporten
