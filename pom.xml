@@ -50,7 +50,7 @@
     
         <apache-httpclient.version>5.6.1</apache-httpclient.version>
 
-        <oauth2-oidc-sdk.version>11.37</oauth2-oidc-sdk.version>
+        <oauth2-oidc-sdk.version>11.37.1</oauth2-oidc-sdk.version>
        
 
         
