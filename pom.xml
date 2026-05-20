@@ -50,14 +50,14 @@
     
         <apache-httpclient.version>5.6.1</apache-httpclient.version>
 
-        <oauth2-oidc-sdk.version>11.37</oauth2-oidc-sdk.version>
+        <oauth2-oidc-sdk.version>11.37.2</oauth2-oidc-sdk.version>
        
 
         
         <bouncycastle.version>1.84</bouncycastle.version>
 
 
-        <junit.version>6.0.3</junit.version>
+        <junit.version>6.1.0</junit.version>
         <assertj.version>3.27.7</assertj.version>
         <mockk.version>1.14.9</mockk.version>
         <mockito.version>5.23.0</mockito.version>
