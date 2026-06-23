@@ -35,4 +35,5 @@ jobs:
       version: ${{ inputs.version }}
       is_release: ${{ inputs.is_release }}
       reviewer: ${{ inputs.reviewer }}
+      runner: 'ubuntu-latest'
     secrets: inherit
