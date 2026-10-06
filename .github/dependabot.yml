@@ -1,6 +1,10 @@
 version: 2
 updates:
 - package-ecosystem: maven
+  cooldown:
+    default-days: 3
+    exclude:
+    - "no.ks.fiks*"
   groups:
     fiks-deps:
       patterns:
