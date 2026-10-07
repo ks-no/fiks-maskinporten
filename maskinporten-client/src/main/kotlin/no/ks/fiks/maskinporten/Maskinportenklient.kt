@@ -239,8 +239,8 @@ class Maskinportenklient(
                             contentStream.bufferedReader().use { it.readText() }
                         }
                     } else if (!StatusLine(classicHttpResponse).isError) {
-                        // Only the body of an error response (4xx/5xx) may end up in logs and exceptions. Any other response can contain an access token
-                        log.warn { "Failed to get token: unexpected http response code $responseCode, response body omitted" }
+                        // Logs and exceptions contain the response body only for 4xx and 5xx responses. Other responses can contain an access token
+                        log.warn { "Failed to get token: unexpected http response code $responseCode. The response body is not logged." }
                         throw MaskinportenTokenRequestException(
                             "Unexpected http response code: $responseCode, url: '$tokenEndpointUrlString'",
                             responseCode,

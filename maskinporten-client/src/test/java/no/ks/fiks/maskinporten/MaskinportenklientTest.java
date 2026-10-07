@@ -404,8 +404,8 @@ class MaskinportenklientTest {
     }
 
     /**
-     * Stands in for the signature of the access tokens in the token leak tests. The client does not verify the
-     * signature, and an access token cannot be used without it.
+     * Replaces the signature of the access tokens in the token leak tests. The client does not verify the signature.
+     * An access token without its signature cannot be used.
      */
     private static final String TOKEN_CANARY = "LEAK-CANARY-token-signature";
 
@@ -430,23 +430,23 @@ class MaskinportenklientTest {
                 Arguments.of("access_token is missing", "{\"id_token\":\"" + CANARY_JWT + "\",\"expires_in\":120}"),
                 Arguments.of("access_token is not a JWS", tokenResponseJson(TOKEN_CANARY, "120")),
                 Arguments.of("access_token has no exp", tokenResponseJson(jwtWithoutExp, "120")),
-                Arguments.of("access_token exp is not a number", tokenResponseJson(jwtWithInvalidExp, "120")),
+                Arguments.of("exp in access_token is not a number", tokenResponseJson(jwtWithInvalidExp, "120")),
                 Arguments.of("truncated JSON", "{\"access_token\":\"" + CANARY_JWT + "\",\"expires_in\":"),
-                Arguments.of("form encoded body", "access_token=" + CANARY_JWT + "&expires_in=abc")
+                Arguments.of("form-encoded body", "access_token=" + CANARY_JWT + "&expires_in=abc")
         );
     }
 
-    @DisplayName("Access token in a 200 response the client cannot use must not end up in exceptions or log output")
+    @DisplayName("The access token in a 200 response that the client cannot use must not appear in exceptions or log output")
     @ParameterizedTest(name = "{0}")
     @MethodSource("unusableTokenResponses")
     void tokenIsNotLeakedWhenTokenResponseIsUnusable(final String description, final String body) {
         final ClientOutput output = requestTokenAndCaptureOutput(HttpStatusCode.OK_200.code(), body);
 
-        assertThat(output.thrown()).as("Token request should fail").isNotNull();
+        assertThat(output.thrown()).as("The token request must fail").isNotNull();
         assertTokenNotLeaked(output);
     }
 
-    @DisplayName("Access token in a response with an unexpected status code must not end up in exceptions or log output")
+    @DisplayName("The access token in a response with an unexpected status code must not appear in exceptions or log output")
     @ParameterizedTest
     @ValueSource(ints = {201, 203, 302, 600})
     void tokenIsNotLeakedWhenStatusCodeIsUnexpected(final int statusCode) {
@@ -459,7 +459,7 @@ class MaskinportenklientTest {
         assertTokenNotLeaked(output);
     }
 
-    @DisplayName("Log capture used by the token leak test sees the client's own log records")
+    @DisplayName("The log capture for the token leak tests sees the log records from the client")
     @Test
     void logCaptureSeesClientLogRecords() {
         final ClientOutput output = requestTokenAndCaptureOutput(HttpStatusCode.FORBIDDEN_403.code(), TOKEN_CANARY);
@@ -500,8 +500,8 @@ class MaskinportenklientTest {
     }
 
     /**
-     * Only the records logged by this library. MockServer and the httpclient wire log also write to stdout and do
-     * contain the response body, but that is outside what this client controls.
+     * Returns only the log records from this library. MockServer and the HttpClient wire log also write to stdout,
+     * and that output contains the response body. This client does not control that output.
      */
     private static String clientLogRecords(final String stdout) {
         return LOG_RECORD_START.splitAsStream(stdout)
@@ -510,8 +510,8 @@ class MaskinportenklientTest {
     }
 
     private static void assertTokenNotLeaked(final ClientOutput output) {
-        assertThat(Throwables.getStackTraceAsString(output.thrown())).as("Exception, including causes, must not contain the token").doesNotContain(TOKEN_CANARY);
-        assertThat(output.clientLogRecords()).as("Client log output must not contain the token").doesNotContain(TOKEN_CANARY);
+        assertThat(Throwables.getStackTraceAsString(output.thrown())).as("The exception and its causes must not contain the token").doesNotContain(TOKEN_CANARY);
+        assertThat(output.clientLogRecords()).as("The log output from the client must not contain the token").doesNotContain(TOKEN_CANARY);
     }
 
     @DisplayName("Generate token with delegation")
