@@ -48,7 +48,7 @@
         <apache-httpcore.version>5.4.3</apache-httpcore.version>
 
     
-        <apache-httpclient.version>5.6.1</apache-httpclient.version>
+        <apache-httpclient.version>5.6.3</apache-httpclient.version>
 
         <oauth2-oidc-sdk.version>11.37</oauth2-oidc-sdk.version>
        
