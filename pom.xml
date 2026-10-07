@@ -39,30 +39,30 @@
 
         <maven-deploy-plugin.version>2.8.2</maven-deploy-plugin.version>
 
-        <nimbus-jose-jwt.version>10.9</nimbus-jose-jwt.version>
+        <nimbus-jose-jwt.version>10.10</nimbus-jose-jwt.version>
         <virksomhetssertifikat.version>4.1.0</virksomhetssertifikat.version>
         <expiringmap.version>0.5.11</expiringmap.version>
         <mockserver.version>5.15.0</mockserver.version>
         <lang-tag.version>1.7</lang-tag.version>
         
-        <apache-httpcore.version>5.4.3</apache-httpcore.version>
+        <apache-httpcore.version>5.4.4</apache-httpcore.version>
 
     
-        <apache-httpclient.version>5.6.3</apache-httpclient.version>
+        <apache-httpclient.version>5.6.4</apache-httpclient.version>
 
-        <oauth2-oidc-sdk.version>11.37</oauth2-oidc-sdk.version>
+        <oauth2-oidc-sdk.version>11.38.2</oauth2-oidc-sdk.version>
        
 
         
-        <bouncycastle.version>1.84</bouncycastle.version>
+        <bouncycastle.version>1.86</bouncycastle.version>
 
 
-        <junit.version>6.0.3</junit.version>
+        <junit.version>6.1.3</junit.version>
         <assertj.version>3.27.7</assertj.version>
-        <mockk.version>1.14.9</mockk.version>
-        <mockito.version>5.23.0</mockito.version>
-        <micrometer.version>1.16.6</micrometer.version>
-        <dropwizard-metrics.version>4.2.38</dropwizard-metrics.version>
+        <mockk.version>1.14.11</mockk.version>
+        <mockito.version>5.24.0</mockito.version>
+        <micrometer.version>1.17.1</micrometer.version>
+        <dropwizard-metrics.version>4.2.40</dropwizard-metrics.version>
     </properties>
 
     <dependencyManagement>
