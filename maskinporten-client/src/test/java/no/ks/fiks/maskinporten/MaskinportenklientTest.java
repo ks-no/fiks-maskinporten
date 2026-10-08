@@ -4,6 +4,7 @@ import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Resources;
 import com.nimbusds.jose.JOSEException;
@@ -35,6 +36,10 @@ import org.apache.hc.core5.net.WWWFormCodec;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockserver.integration.ClientAndServer;
 import org.mockserver.matchers.Times;
 import org.mockserver.mock.action.ExpectationResponseCallback;
@@ -43,7 +48,9 @@ import org.mockserver.model.HttpResponse;
 import org.mockserver.model.HttpStatusCode;
 import org.mockserver.model.MediaType;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.net.ServerSocket;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
@@ -55,6 +62,9 @@ import java.text.ParseException;
 import java.time.Clock;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockserver.model.HttpClassCallback.callback;
@@ -325,6 +335,7 @@ class MaskinportenklientTest {
             final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()));
             final MaskinportenTokenRequestException exception = catchThrowableOfType(() -> maskinportenklient.getAccessToken(SCOPE), MaskinportenTokenRequestException.class);
             assertThat(exception.getStatusCode()).isEqualTo(HttpStatusCode.INTERNAL_SERVER_ERROR_500.code());
+            assertThat(exception.getMaskinportenError()).isEqualTo("FAILURE WAS AN OPTION AFTER ALL");
         }
     }
 
@@ -350,6 +361,7 @@ class MaskinportenklientTest {
             Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()));
             final MaskinportenTokenTemporarilyUnavailableException exception = catchThrowableOfType(() -> maskinportenklient.getAccessToken(SCOPE), MaskinportenTokenTemporarilyUnavailableException.class);
             assertThat(exception.getStatusCode()).isEqualTo(HttpStatusCode.SERVICE_UNAVAILABLE_503.code());
+            assertThat(exception.getMaskinportenError()).isEqualTo("FAILURE WAS AN OPTION AFTER ALL");
         }
     }
 
@@ -389,6 +401,117 @@ class MaskinportenklientTest {
             assertThat(thrown.getMaskinportenError()).isEqualTo(maskinportenError);
             assertThat(thrown.getStatusCode()).isEqualTo(HttpStatusCode.FORBIDDEN_403.code());
         }
+    }
+
+    /**
+     * Replaces the signature of the access tokens in the token leak tests. The client does not verify the signature.
+     * An access token without its signature cannot be used.
+     */
+    private static final String TOKEN_CANARY = "LEAK-CANARY-token-signature";
+
+    private static final Pattern LOG_RECORD_START = Pattern.compile("^(?=\\[[^\\]]*\\] (?:TRACE|DEBUG|INFO|WARN|ERROR) )", Pattern.MULTILINE);
+
+    private static final Pattern CLIENT_LOG_RECORD = Pattern.compile("\\[[^\\]]*\\] \\S+\\s+no\\.ks\\.fiks\\.maskinporten\\.");
+
+    private record ClientOutput(Throwable thrown, String clientLogRecords) {
+    }
+
+    private static final String CANARY_JWT = canaryJwt(ImmutableMap.of("scope", SCOPE, "exp", new Date(Clock.systemUTC().millis() + 120_000L)));
+
+    static Stream<Arguments> unusableTokenResponses() {
+        final String jwtWithoutExp = canaryJwt(ImmutableMap.of("scope", SCOPE));
+        final String jwtWithInvalidExp = canaryJwt(ImmutableMap.of("scope", SCOPE, "exp", "abc"));
+        return Stream.of(
+                Arguments.of("expires_in is not a number", tokenResponseJson(CANARY_JWT, "\"not-a-number\"")),
+                Arguments.of("expires_in is missing", "{\"access_token\":\"" + CANARY_JWT + "\",\"scope\":\"" + SCOPE + "\"}"),
+                Arguments.of("expires_in is a decimal", tokenResponseJson(CANARY_JWT, "120.5")),
+                Arguments.of("expires_in is an object", tokenResponseJson(CANARY_JWT, "{\"x\":1}")),
+                Arguments.of("expires_in is null", tokenResponseJson(CANARY_JWT, "null")),
+                Arguments.of("access_token is missing", "{\"id_token\":\"" + CANARY_JWT + "\",\"expires_in\":120}"),
+                Arguments.of("access_token is not a JWS", tokenResponseJson(TOKEN_CANARY, "120")),
+                Arguments.of("access_token has no exp", tokenResponseJson(jwtWithoutExp, "120")),
+                Arguments.of("exp in access_token is not a number", tokenResponseJson(jwtWithInvalidExp, "120")),
+                Arguments.of("truncated JSON", "{\"access_token\":\"" + CANARY_JWT + "\",\"expires_in\":"),
+                Arguments.of("form-encoded body", "access_token=" + CANARY_JWT + "&expires_in=abc")
+        );
+    }
+
+    @DisplayName("The access token in a 200 response that the client cannot use must not appear in exceptions or log output")
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("unusableTokenResponses")
+    void tokenIsNotLeakedWhenTokenResponseIsUnusable(final String description, final String body) {
+        final ClientOutput output = requestTokenAndCaptureOutput(HttpStatusCode.OK_200.code(), body);
+
+        assertThat(output.thrown()).as("The token request must fail").isNotNull();
+        assertTokenNotLeaked(output);
+    }
+
+    @DisplayName("The access token in a response with an unexpected status code must not appear in exceptions or log output")
+    @ParameterizedTest
+    @ValueSource(ints = {201, 203, 302, 600})
+    void tokenIsNotLeakedWhenStatusCodeIsUnexpected(final int statusCode) {
+        final ClientOutput output = requestTokenAndCaptureOutput(statusCode, tokenResponseJson(CANARY_JWT, "120"));
+
+        assertThat(output.thrown()).isInstanceOfSatisfying(MaskinportenTokenRequestException.class, exception -> {
+            assertThat(exception.getStatusCode()).isEqualTo(statusCode);
+            assertThat(exception.getMaskinportenError()).isEmpty();
+        });
+        assertTokenNotLeaked(output);
+    }
+
+    @DisplayName("The log capture for the token leak tests sees the log records from the client")
+    @Test
+    void logCaptureSeesClientLogRecords() {
+        final ClientOutput output = requestTokenAndCaptureOutput(HttpStatusCode.FORBIDDEN_403.code(), TOKEN_CANARY);
+
+        assertThat(output.clientLogRecords()).contains(TOKEN_CANARY);
+    }
+
+    private ClientOutput requestTokenAndCaptureOutput(final int statusCode, final String body) {
+        try (final ClientAndServer client = ClientAndServer.startClientAndServer()) {
+            client.when(
+                    request()
+                            .withMethod(HttpMethod.POST.name())
+                            .withPath("/token")
+            ).respond(response().withStatusCode(statusCode).withBody(body));
+            final Maskinportenklient maskinportenklient = createClient(String.format("http://localhost:%s/token", client.getLocalPort()));
+
+            final PrintStream originalOut = System.out;
+            final ByteArrayOutputStream stdout = new ByteArrayOutputStream();
+            System.setOut(new PrintStream(stdout, true, StandardCharsets.UTF_8));
+            final Throwable thrown;
+            try {
+                thrown = catchThrowable(() -> maskinportenklient.getAccessToken(SCOPE));
+            } finally {
+                System.setOut(originalOut);
+            }
+            return new ClientOutput(thrown, clientLogRecords(stdout.toString(StandardCharsets.UTF_8)));
+        }
+    }
+
+    private static String canaryJwt(final Map<String, Object> claims) {
+        final JWTClaimsSet.Builder claimsSetBuilder = new JWTClaimsSet.Builder();
+        claims.forEach(claimsSetBuilder::claim);
+        return new JWSHeader(JWSAlgorithm.RS256).toBase64URL() + "." + claimsSetBuilder.build().toPayload().toBase64URL() + "." + TOKEN_CANARY;
+    }
+
+    private static String tokenResponseJson(final String accessToken, final String expiresInJson) {
+        return "{\"access_token\":\"" + accessToken + "\",\"expires_in\":" + expiresInJson + ",\"scope\":\"" + SCOPE + "\"}";
+    }
+
+    /**
+     * Returns only the log records from this library. MockServer and the HttpClient wire log also write to stdout,
+     * and that output contains the response body. This client does not control that output.
+     */
+    private static String clientLogRecords(final String stdout) {
+        return LOG_RECORD_START.splitAsStream(stdout)
+                .filter(record -> CLIENT_LOG_RECORD.matcher(record).lookingAt())
+                .collect(Collectors.joining());
+    }
+
+    private static void assertTokenNotLeaked(final ClientOutput output) {
+        assertThat(Throwables.getStackTraceAsString(output.thrown())).as("The exception and its causes must not contain the token").doesNotContain(TOKEN_CANARY);
+        assertThat(output.clientLogRecords()).as("The log output from the client must not contain the token").doesNotContain(TOKEN_CANARY);
     }
 
     @DisplayName("Generate token with delegation")

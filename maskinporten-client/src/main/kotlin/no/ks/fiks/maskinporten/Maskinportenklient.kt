@@ -23,6 +23,7 @@ import org.apache.hc.client5.http.io.HttpClientConnectionManager
 import org.apache.hc.core5.http.*
 import org.apache.hc.core5.http.io.SocketConfig
 import org.apache.hc.core5.http.io.support.ClassicRequestBuilder
+import org.apache.hc.core5.http.message.StatusLine
 import org.apache.hc.core5.util.Timeout
 import java.io.IOException
 import java.nio.charset.StandardCharsets
@@ -237,6 +238,14 @@ class Maskinportenklient(
                         classicHttpResponse.entity.content?.use { contentStream ->
                             contentStream.bufferedReader().use { it.readText() }
                         }
+                    } else if (!StatusLine(classicHttpResponse).isError) {
+                        // Logs and exceptions contain the response body only for 4xx and 5xx responses. Other responses can contain an access token
+                        log.warn { "Failed to get token: unexpected http response code $responseCode. The response body is not logged." }
+                        throw MaskinportenTokenRequestException(
+                            "Unexpected http response code: $responseCode, url: '$tokenEndpointUrlString'",
+                            responseCode,
+                            ""
+                        )
                     } else {
                         val errorFromMaskinporten: String =
                             classicHttpResponse.entity.content.use { errorContentStream ->

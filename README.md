@@ -13,6 +13,36 @@ Mottatte access-token blir lagret i en cache og vil bli gjenbrukt frem til de ut
 Dette er nyttig dersom det gjøres en forespørsel rett før tokenet utløper og det er fare for at tokenet blir ugyldig før forespørselen sendes. 
 Konfigurasjon gjøres ved initiering av klienten og styres i feltet "numberOfSecondsLeftBeforeExpire".
 
+## Sikkerhet: ikke slå på debug-logging av HttpClient i produksjon
+
+> [!CAUTION]
+> **Debug-logging av Apache HttpClient skriver gyldige Maskinporten-tokens i klartekst til loggen.**
+>
+> Klienten bruker Apache HttpClient 5. Når loggeren `org.apache.hc.client5.http.wire` står på `DEBUG`, logger HttpClient hele forespørselen og hele svaret. Det gjelder også svaret fra Maskinporten med `access_token` ved **vellykkede** kall.
+> Loggeren `org.apache.hc.client5.http.headers` logger alle headere på samme måte. Hvis dere også bruker HttpClient til å kalle API-ene som tokenet gir tilgang til, logger den også `Authorization: Bearer <token>`.
+>
+> Loggerne arver nivået fra foreldreloggerne. Derfor slås de også på når `org.apache.hc.client5.http`, `org.apache` eller `root` settes til `DEBUG`, for eksempel under feilsøking av nettverksproblemer.
+>
+> Dette er slik HttpClient er laget. Det er ikke en feil i denne klienten, og klienten kan ikke slå det av. Tjenesten som bruker klienten, må sørge for at disse loggerne aldri står på `DEBUG` i produksjon, heller ikke midlertidig.
+
+Lås nivået for de to loggerne eksplisitt, så det ikke endres når en foreldrelogger settes til `DEBUG`:
+
+```yaml
+# application.yaml (Spring Boot)
+logging:
+  level:
+    org.apache.hc.client5.http.wire: INFO
+    org.apache.hc.client5.http.headers: INFO
+```
+
+```xml
+<!-- logback.xml -->
+<logger name="org.apache.hc.client5.http.wire" level="INFO"/>
+<logger name="org.apache.hc.client5.http.headers" level="INFO"/>
+```
+
+Hvis debug-logging likevel har vært på, behandle loggene som om de inneholder hemmeligheter.
+
 ## Maskinporten-miljøer
 Digdir vedlikeholder [liste med gyldige verdier for miljøene de tilbyr](https://docs.digdir.no/maskinporten_func_wellknown.html)
 
