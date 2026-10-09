@@ -38,6 +38,8 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <maven-deploy-plugin.version>2.8.2</maven-deploy-plugin.version>
+        <!-- Remove override after 3.6.1 is released. -->
+        <maven-surefire-plugin.version>3.5.6</maven-surefire-plugin.version>
 
         <nimbus-jose-jwt.version>10.9</nimbus-jose-jwt.version>
         <virksomhetssertifikat.version>4.1.0</virksomhetssertifikat.version>
