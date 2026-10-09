@@ -32,7 +32,7 @@ class MaskinportenAutoConfigure {
      * Configures observability for MaskinportenKlient
      */
     @AutoConfiguration
-    inner class Observability {
+    class Observability {
         @Bean
         @ConditionalOnBean(ObservationRegistry::class)
         @ConditionalOnMissingBean
@@ -50,7 +50,7 @@ class MaskinportenAutoConfigure {
 
     @AutoConfigureAfter(VirksomhetSertifikatAutoConfigure::class)
     @ConditionalOnClass(VirksomhetSertifikater::class)
-    inner class MaskinportenUsingVirksomhetSertifikatAutoConfigure {
+    class MaskinportenUsingVirksomhetSertifikatAutoConfigure {
 
         @ConditionalOnMissingBean
         @Conditional(MissingAsymmetricKeyConfigurationCondition::class)
@@ -70,7 +70,7 @@ class MaskinportenAutoConfigure {
 
     @ConditionalOnProperty("maskinporten.asymmetric-key")
     @EnableConfigurationProperties(PrivateKeyProperties::class)
-    inner class MaskinportenUsingAsymetricKeyAutoConfigure {
+    class MaskinportenUsingAsymetricKeyAutoConfigure {
 
         @ConditionalOnMissingBean
         @Bean
@@ -92,7 +92,7 @@ class MaskinportenAutoConfigure {
     @ConditionalOnProperty("maskinporten.private-key.pem-file-path")
     @EnableConfigurationProperties(PrivateKeyProperties::class)
     @AutoConfiguration(before = [MaskinportenUsingAsymetricKeyAutoConfigure::class])
-    inner class PrivateKeyProviderAutoConfigure {
+    class PrivateKeyProviderAutoConfigure {
 
         @ConditionalOnMissingBean
         @Bean
