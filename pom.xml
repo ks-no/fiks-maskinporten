@@ -42,7 +42,7 @@
         <maven-surefire-plugin.version>3.5.6</maven-surefire-plugin.version>
 
         <nimbus-jose-jwt.version>10.9</nimbus-jose-jwt.version>
-        <virksomhetssertifikat.version>4.1.0</virksomhetssertifikat.version>
+        <virksomhetssertifikat.version>4.1.1</virksomhetssertifikat.version>
         <expiringmap.version>0.5.11</expiringmap.version>
         <mockserver.version>5.15.0</mockserver.version>
         <lang-tag.version>1.7</lang-tag.version>
